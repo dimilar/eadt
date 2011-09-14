@@ -42,7 +42,12 @@
     ("ddms" . "")
     ("cmake" . "")
     ("aapt" . "")
-    ("gdbserver" . "")))
+    ("gdbserver" . ""))
+  "Variable to save the pathes of tools in common use,
+CAR is the tool name, CDR is the path, which is set
+by calling `android-set-tool-path'. Once one tool's path is set,
+as you call the function `android-get-tool-path', the path will
+ be returned.")
 
 (defcustom android-environment-variables 
  '(("ANDROID_SDK" "/opt/android-sdk" "")
@@ -54,7 +59,10 @@ toolchains/arm-linux-androideabi-4.4.3/prebuilt/" "gcc c++ gdb g++ ld ar as stri
    ("ANT_HOME" "/usr/share/ant/bin" "ant")
    ("BUILD_TOOL" "/usr/bin" "cmake make")
    ("DEBUG_TOOL" "/opt/android-ndk-r6/toolchains/arm-linux-androideabi-4.4.3/prebuilt" "gdbserver"))
-  "hello"
+  "A list to set some significat environment varaibles. Each element is a list which contains 3 elements:
+the first is the name of the environment variable, the second is the value (path) of the varaible, while the
+third one is the tools which can be found along the path. Although it is possible to find the tools' path witout
+these varaibles, you are recommended to set them, for performance, as well as reliability."
   :group 'android-mode
   :type '(repeat
           (list
@@ -64,6 +72,8 @@ toolchains/arm-linux-androideabi-4.4.3/prebuilt/" "gcc c++ gdb g++ ld ar as stri
            (string :tag "Tools"))))
 
 (defun android-environment-add-directories ()
+  "If failed to get the path of the tools along the `android-environment-variables'
+it will search the tool in the following supplimentary pathes."
   (let ((dirs nil)
         (env nil))
     (push "/usr/bin" dirs)
@@ -98,7 +108,7 @@ toolchains/arm-linux-androideabi-4.4.3/prebuilt/" "gcc c++ gdb g++ ld ar as stri
   dirs))
 
 (defun android-search-tool (files directories)
-  ""
+  "Recursively search a tool in those supplementary direcotries"
   (let (path)
     (if (null directories) nil
       (catch 'break
@@ -109,6 +119,7 @@ toolchains/arm-linux-androideabi-4.4.3/prebuilt/" "gcc c++ gdb g++ ld ar as stri
       (android-search-tool files (cdr directories))))))
 
 (defun android-set-tool-path (tool-name)
+  "Function to set the pathes of those tools listed in `android-tools-alist'"
   (let* ((extention
          (if (eq system-type "windows-nt") '(".bat" ".exe") '("")))
          tool-path directories)
@@ -133,8 +144,11 @@ toolchains/arm-linux-androideabi-4.4.3/prebuilt/" "gcc c++ gdb g++ ld ar as stri
 
 
 (defmacro android-get-tool-path (tool-name)
+  "Macro to get one tool's full path, if not find in the `android-tools-alist',
+search and set it."
   (let ((tool-path (cdr (assoc tool-name android-tools-alist))))
     (if (string= tool-path "")
         (android-set-tool-path tool-name)
       tool-path)))
+
 (provide 'android-tools)

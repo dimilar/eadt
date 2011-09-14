@@ -154,4 +154,8 @@
 (defalias 'android-debug-activity #'(lambda () (interactive) (android-debug-command "activity-jdb")))
 (defalias 'android-debug-jni #'(lambda () (interactive) (android-debug-command "jni-gdb")))
 (defalias 'android-debug-native #'(lambda () (interactive) (android-debug-command "native-gdb")))
+
+(defalias 'android-adb-device-connect #'(lambda () (interactive) (android-adb-device-command "connect")))
+
+(defalias 'android-adb-device-disconnect #'(lambda () (interactive) (android-adb-device-command "disconnect")))
 (provide 'android-command)
