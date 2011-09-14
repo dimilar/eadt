@@ -97,26 +97,6 @@
          (symbol-function (intern (concat "android-" (symbol-name android-build-tool) "-" task)))))
     (apply build-function nil)))
 
-
-(defun android-adb-device-command (command)
-  ""
-  (let* ((host (completing-read "Host[:port]: " nil))
-        (out
-         (substring
-          (shell-command-to-string 
-           (format "%s %s %s"
-                   (android-get-tool-path "adb")
-                   command host)) 0 -1)))
-    (android-get-devices)
-    (message out)))
-
-(defalias 'android-adb-device-connect
-  #'(lambda () (interactive) (android-adb-device-command "connect")))
-
-(defalias 'android-adb-device-disconnect
-  #'(lambda () (interactive) (android-adb-device-command "disconnect")))
-
-
 (defsubst android-run-activity ()
   (save-excursion
     (let* ((file-sym (intern android-file-name android-file-prop-obarray))

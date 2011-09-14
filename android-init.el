@@ -31,24 +31,41 @@
 ;; 
 ;;; Code:
 
-(defvar android-project-prop-obarray (make-vector 10 0) " ")
-(defvar android-file-prop-obarray (make-vector 20 0) " ")
+(defvar android-project-prop-obarray (make-vector 10 0)
+  "Obarray for per-project properites")
+(defvar android-file-prop-obarray (make-vector 20 0)
+  "Obarray for per-file properties")
 
+;; TODO: if a user creates a item including blank around the "="
 (defvar android-prop-regexp
-  "^\\(target\\|sdk.dir\\|source.dir\\|out.dir\\|key.store\\|key.alias\\|android.library.reference.[1-3]\\)=\\(.*\\)")
+  "^\\(target\\|sdk.dir\\|source.dir\\|out.dir\\|key.store\
+\\|key.alias\\|android.library.reference.[1-3]\\)=\\(.*\\)"
+  "The regular experssion used to parse the prop files of android
+project: default.properties local.properties build.properites...")
 
-(defvar android-prop-makefile-regexp "^\\(program\\)[ ]*?:=[ ]*\\(.*\\)[^ ]*?")
+(defvar android-prop-makefile-regexp
+  "^\\(program\\)[ ]*?:=[ ]*\\(.*\\)[^ ]*?"
+  "The regexp used to retrieve the program name from the Makefile, note
+it is only usful for native project")
+
 (defcustom android-device nil
-  ""
+  "User can use it to specific a device as the default one.
+If it is nil, and some other devices are available, user can
+select one from the menu. Note it is a buffer local variable."
   :group 'android-mode
-  :type '(string :tag "default device"))
-  ;; :get (lambda (sym value)
-  ;;        (shell-command-to-string (format "%s -s %s get-state") (android-get-tool-path "adb") value)))
-;; (setq-default android-device "dimilar-android:5555")
+  :type '(string :tag "default device")
+  :set '(lambda (sym val) (set-default sym val)))
 (make-variable-buffer-local 'android-device)
-(defvar android-devices-alist nil)
+
+(defvar android-devices-alist nil
+  "A alist to store all devices/emulators existing on your machine
+or in your network environment. Each element consists of a device (CAR)
+and its state (CDR): offline|device|bootloader.")
 
 (defun android-get-devices()
+  "A function used to fetch all devices available on your machine or around it
+by applying the command `adb devices`. The result is stored in the
+android-devices-alist"
   (let* ((command (format "%s devices" (android-get-tool-path "adb")))
          (output (shell-command-to-string command))
          (start 0) device state pair)
@@ -63,35 +80,83 @@
       (setq start (match-end 2)))))
 
 (defsubst android-get-device-state ()
+  "Get the state of the device specified in the property :device of the current
+file. However, for those devices connected through the internet,
+the state obtained by executing `adb -s YOUR-DEVICE-NAME  get-state` is:
+\"error: unknown host service\""
   (substring (shell-command-to-string
               (format "%s -s %s get-state"
                       (android-get-tool-path "adb") android-device)) 0 -1))
 
 (defun android-switch-device(device)
-  (let (buf)
-  (unless (string= device android-device)
-    (loop for sym across android-file-prop-obarray
-          do (when (and (symbolp sym)
-                        (get sym 'device)
-                        (string= (get sym 'project-root)
-                                 (get (intern android-file-name android-file-prop-obarray) 'project-root))
-                        (setq buf (get-file-buffer (symbol-name sym))))
-               (with-current-buffer buf
-                 (setq android-device device)
-                 (put sym 'device (cons device (android-get-device-state))))))
-    (android-project-prop-reset
-     android-file-name (list (cons 'device (cons device (android-get-device-state))))))
-  (android-refresh-device-menu)))
+  "If multiple devices exist, when clicking the corresponding menu item,
+set the properity :DEVICE of the current file and the project which this file belongs to,
+as well as of all open files under the same project. In the end, redraw the device menu."
+  (let (buf (device-cons (cons device (android-get-device-state))))
+    (unless (string= device android-device)
+      (loop for sym across android-file-prop-obarray
+            do
+            (when (and (symbolp sym)
+                     (get sym 'project-root)
+                     (string= (get sym 'project-root)
+                              (get (intern android-file-name
+                                           android-file-prop-obarray)
+                                   'project-root))
+                     (setq buf (get-file-buffer (symbol-name sym))))
+              (with-current-buffer buf
+                (setq android-device device)
+                (put sym 'device device-cons))))
+      (android-project-prop-reset
+       android-file-name (list (cons 'device device-cons))))
+    (android-refresh-device-menu)))
+
+(defun android-adb-device-command (command)
+  "Connect device or emulator through the internet"
+  (let* ((host (completing-read "Host[:port]: " nil))
+        (out
+         (substring
+          (shell-command-to-string 
+           (format "%s %s %s"
+                   (android-get-tool-path "adb")
+                   command host)) 0 -1)))
+    (android-get-devices)
+    ;; if android-device is nil, it indicats before the
+    ;; android-device-alist is nil, too. if sucessfully
+    ;; connected, try to update the device of the current
+    ;; project. While if the command is "disconnect", it
+    ;; is too complicated to synchronize everything.
+    (if (and (string= command "connect")
+             (not android-device)
+             android-devices-alist)
+        (android-switch-device
+         (car (car android-devices-alist)))
+      (android-refresh-device-menu))
+    (message out)))
+
+(defalias 'android-adb-device-connect
+  #'(lambda () (interactive) (android-adb-device-command "connect")))
+
+(defalias 'android-adb-device-disconnect
+  #'(lambda () (interactive) (android-adb-device-command "disconnect")))
+
 
 (defvar android-command-type
   '(compile install uninstall
-    clean recompile run debug-activity debug-jni debug-native))
+    clean recompile run debug-activity debug-jni debug-native)
+  "some commands executed by clicking the menu item. This varibale
+is used to control the enabilities of these commands on the menu")
 
 (defsubst android-get-command-enable-state (command)
-  (cdr (assq command (get (intern android-file-name android-file-prop-obarray) 'command-enable))))
+  "inline function to get the enability of the COMMAND"
+  (cdr (assq command
+             (get (intern android-file-name android-file-prop-obarray)
+                  'command-enable))))
 
 (defun android-switch-build-tool (tool)
-  ""
+  "When switching to another building tool (on of ant, cmake and make ...)
+modify the property :build-tool of the current file and the project which this file belongs to,
+as well as of all open files under the same project. Furthermore, it is required to
+update the mode string and show the current build tool."
   (let (command-enability buf (tool-sym (intern tool)))
     (if (eq tool-sym android-build-tool)
         (android-set-mode-string)
@@ -122,24 +187,32 @@
 
 
 (defun android-refresh-device-menu ()
+  "each project has its own device menu whose visibility is determined by
+the project root of the current buffer."
+  ;; TODO: if user does not customize a default device,
+  ;;       after connected to a new device (before there is no device available)
+  ;;       how to update the property "device" of all open files
   (let* ((file-sym (intern android-file-name android-file-prop-obarray))
          (proj-root (get file-sym 'project-root))
          (file-device (car (get file-sym 'device))))
-    (unless (and (not (or android-devices-alist (android-get-devices)))
-                 (not (assoc android-device android-devices-alist)))
+    ;; if android-devices-alist is  nil, try to fill it
+    (or android-devices-alist (android-get-devices))
+    ;; if user define a device, while the device is not
+    ;; in the alist, append the device to the alist
+    (when (and android-device
+               (not (assoc android-device android-devices-alist)))
       (setq android-devices-alist
             (append android-devices-alist
                     (list (cons android-device (android-get-device-state))))))
     (dolist (dv android-devices-alist)
       (define-key android-minor-mode-menu (vector (intern (concat proj-root (car dv))))
-        `(menu-item (car ',dv) (lambda () (interactive) (android-switch-device (car ',dv)))
+        `(menu-item (concat (car ',dv) ": " (cdr ',dv)) (lambda () (interactive) (android-switch-device (car ',dv)))
                     :button (:radio . (string= (car ',dv) ,file-device))
-                    :visible (string= (get (intern android-file-name android-file-prop-obarray) 'project-root) ',proj-root))))
+                    :visible (string= (get (intern android-file-name android-file-prop-obarray)
+                                           'project-root) ',proj-root))))
     (when android-devices-alist
       (define-key android-minor-mode-menu [separator-devices]
         '(menu-item "--")))))
-;; (defvar android-devices-menu (make-sparse-keymap "Devices"))
-;; (define-key android-devices-menu [])
 
 (defcustom android-armeabi (list "armeabi-v7a with NEON")
   ""

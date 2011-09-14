@@ -114,24 +114,30 @@
       (kill-buffer buffer)) id))
 
 (defun adb-forward-port  (device protocol &optional port-pair)
-  (let* ((port-command (format "adb %s jdwp | tail -1" device))
+  "Forwarding of requests on a specific host port to a different
+port on an emulator/device instance. If optional parameter port-pair
+ is nil, we have to find the jdwp port by ourself."
+  (let* (local-port
+         remote-port
          (ports
-          (if (consp port-pair) port-pair
-            (cons android-sdk-jdb-port
-                  (substring
-                   (shell-command-to-string port-command)
-                   0 -1))))
-         (local-port (car ports))
-         (remote-port (cdr ports))
-         (command
-          (format " forward tcp:%s %s:%s"
-                  local-port protocol remote-port)))
-    (call-process-shell-command (android-get-tool-path "adb")
-                                nil nil nil command)))
+          (if (consp port-pair)
+              port-pair
+            (let ((shell-output
+                   (shell-command-to-string
+                    (format "adb %s jdwp | tail -1" device))))
+              (if (string-match  "\\([0-9]+\\)" shell-output)
+                  (cons android-sdk-jdb-port (match-string 1 shell-output))
+                nil)))))
+    (when ports
+      (setq local-port (car ports))
+      (setq remote-port (cdr ports))
+      (call-process-shell-command
+       (android-get-tool-path "adb") nil nil nil
+       (format " forward tcp:%s %s:%s" local-port protocol remote-port)))))
 
 
 (defun android-activity-jdb-debug ()
-  ""
+  "Please kill the existent process of the package to be debugged."
   (interactive)
   (let* ((device (android-get-current-device))
          (device-arg (if device (format " -s %s " device) ""))
@@ -144,19 +150,24 @@
          (source-path (completing-read "Source path: " pathes nil nil (car pathes) nil (car pathes)))
          (jdb-command
           (concat "jdb -connect com.sun.jdi.SocketAttach:hostname=localhost,port="
-                  android-sdk-jdb-port " -sourcepath" source-path)))
- ;;         (adb-start-args
- ;;          (format "%s -d shell am start -e debug true -a android.intent.action.MAIN\
- ;; -c android.intent.category.LAUNCHER -n %s" device-arg class)))
-    ;; (call-process-shell-command adb-tool-path nil nil nil "wait-for-device")
-    (adb-forward-port device-arg "jdwp")
-    ;; (call-process-shell-command adb-tool-path nil nil nil adb-start-args)
-    (jdb jdb-command)
-    (call-process-shell-command "sleep" nil nil nil " 1")
-    ;; (android-launch-activity device-arg package-class)
-    (start-process-shell-command
-     "*android start activity*" nil
-     (format "%s %s shell am start -n %s" adb-tool-path device-arg (car classes)))))
+                  android-sdk-jdb-port " -sourcepath" source-path))
+         package-process-id)
+    ;; kill the existent process
+    ;; (when (setq package-process-id (android-get-process-id device-arg (car package-class)))
+    ;;   (call-process-shell-command
+    ;;    adb-tool-path nil nil nil
+    ;;    (format " %s shell kill -9 %s" device-arg package-process-id))
+    ;;   (call-process-shell-command "sleep" nil nil nil " 5"))    
+    (if (eq (adb-forward-port device-arg "jdwp") 0)
+        (progn 
+        ;; (call-process-shell-command adb-tool-path nil nil nil adb-start-args)
+          ;; (android-launch-activity device-arg package-class)
+          (jdb jdb-command)
+          (call-process-shell-command "sleep" nil nil nil " 1")
+          (start-process-shell-command
+           "*android start activity*" nil
+           (format "%s %s shell am start -n %s" adb-tool-path device-arg (car classes))))
+      (error "Failed to forward the port"))))
 
 (defun android-jni-gdb-debug ()
   "thisandthat."
