@@ -125,8 +125,8 @@
   (let* ((file-sym (intern android-file-name android-file-prop-obarray))
          (proj-root (get file-sym 'project-root))
          (file-device (car (get file-sym 'device))))
-    (unless android-devices-alist (android-get-devices))
-    (unless (assoc android-device android-devices-alist)
+    (unless (and (not (or android-devices-alist (android-get-devices)))
+                 (not (assoc android-device android-devices-alist)))
       (setq android-devices-alist
             (append android-devices-alist
                     (list (cons android-device (android-get-device-state))))))

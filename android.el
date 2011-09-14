@@ -206,4 +206,4 @@
 ;; (add-hook 'dired-mode-hook (lambda () (when (android-root) (android-mode t))))
 (add-hook 'find-file-hook  'android-find-file-hook)
 (add-hook 'dired-mode-hook  'android-find-file-hook)
-(provide 'android-mode)
+(provide 'android)
