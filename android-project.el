@@ -38,12 +38,12 @@
   `(replace-regexp-in-string "\\(^[ \t]*\\|[ \t]*$\\)" "" ,string))
 
 (defconst android-project-management-type
-  '((("create" . "project") (target name path activity package))
+  '((("create" . "project") (target name path activity package build-tool))
     (("update" . "project") (target path name))
     (("create" . "lib-project") (name target package path))
     (("update" . "lib-project") (path target))
     (("update" . "lib-project") (target path library))
-    (("create" . "native-project") (target path name type))))
+    (("create" . "native-project") (target path name type build-tool))))
 
 (defun android-project-sentinel-function (proc msg)
   (when (memq (process-status proc) '(exit signal))
@@ -53,36 +53,73 @@
 
 (defun android-project-create (type args n)
   "thisandthat."
-  (let* (key value arg-string result project-root
-             (type-command (car type))
+  (let* (key value arg-string result project-root target
+             build-tool build-tool-summary (type-command (car type))
              (type-name (cdr type)))
     (dolist (item args)
       (when item
-        (setq key (symbol-name (car item)))
+        (setq key (car item))
         (setq value (cdr item))
-        (when (and (stringp value)
-                   (not (string= (string-trim value) "")))
-          (when (string= key "target")
-            (setq value (car (split-string value ":"))))
-          (when (string= key "path")
-            (if (string= (substring value -1) "/")
-                (setq project-root value)
-              (setq project-root (concat value "/"))))
-          (setq arg-string (concat arg-string " --" key " " value)))))
+        (catch 'continue
+          (when (and (stringp value)
+                     (not (string= (string-trim value) "")))
+            ;; if build-tool is given, continue
+            (when (eq key 'build-tool)
+              (setq build-tool value)
+              (throw 'continue nil))
+            (when (eq key 'target)
+              (setq value (nth 1 (split-string value " "))
+                    target value))
+            (when (eq key 'path)
+              (if (string= (substring value -1) "/")
+                  (setq project-root value)
+                (setq project-root (concat value "/"))))
+            (setq arg-string (concat arg-string " --" (symbol-name key) " " value))))))
     (setq result (condition-case err
         (call-process-shell-command
          (android-get-tool-path "android") nil nil nil
          type-command type-name arg-string)
       (error (format "Failed: %s" err))))
     (when (eq result 0)
-        (let* ((args (split-string arg-string " "))
-               (summary (mapconcat #'(lambda (x)
-                      (if (string-match "^--\\(.+?\\)$" x)
-                          (concat (capitalize (match-string 1 x)) ":")
-                        (propertize x 'face font-lock-warning-face))) args " ")))
-          (when (string= type-command "update")
-            (android-project-set-prop project-root))
-          (message (concat type-name " successfully " type-command "d (" summary " )"))))))
+      (when build-tool
+        ;; default is build-tool
+        (setq build-tool-summary build-tool)
+        (cond ((string= build-tool "cmake")
+               ;; (android-project-prop-reset
+               ;;  project-root (list (cons 'build-tool "cmake")))
+             ;; need to open a file to get the project's properties
+             (let ((buf (find-file (concat project-root "AndroidManifest.xml"))))
+               (save-excursion
+                 (with-current-buffer buf
+                   (condition-case  err
+                     (progn 
+                       (android-switch-build-tool "cmake")
+                       (android-project-gen-file
+                        (concat project-root "CMakeLists.txt")
+                        (list 'android-gen-cmakelists-header
+                              'android-gen-cmakelists-tail)
+                        (list (cons 'android-project-name
+                                    (concat (cdr (assq 'package args)) "/"
+                                            (cdr (assq 'name args))))
+                              (cons 'android-target target))))
+                     (err (message (format "failed to generate the CMakeLists.txt: %s" (error-message-string err))))))
+                 (kill-buffer buf))))
+              ;; if not ant and cmake
+              ((not (string= build-tool "ant"))
+               (setq build-tool-summary "The build tool you\
+ provided is not support for this project, it will use the default tool ant.")))
+        (setq build-tool-summary
+              (concat "Build tool: "
+                      (propertize build-tool-summary 'face font-lock-warning-face))))
+      (let* ((args (split-string arg-string " "))
+             (summary (mapconcat #'(lambda (x)
+                                     (if (string-match "^--\\(.+?\\)$" x)
+                                         (concat (capitalize (match-string 1 x)) ":")
+                                       (propertize x 'face font-lock-warning-face))) args " ")))
+        (when (string= type-command "update")
+          (android-project-set-prop project-root))
+        (message (concat type-name " successfully " type-command "d (" summary " )"
+                         build-tool-summary))))))
     ;; (set-process-sentinel
     ;;  (funcall
     ;;   'start-process-shell-command
@@ -105,10 +142,12 @@
          (target (get project-sym 'target))
          (project-name (concat (get project-sym 'package) "/"
                                (get project-sym 'android:name))))
-    (android-project-gen-file cmakelists
-                              'android-gen-cmakebuffer
-                              (list (cons 'android-project-name project-name)
-                                    (cons 'android-target target)))))
+    (android-project-gen-file
+     cmakelists
+     (list 'android-gen-cmakelists-header
+           'android-gen-cmakelists-tail)
+     (list (cons 'android-project-name project-name)
+           (cons 'android-target target)))))
 
 (defun android-project-switch-build-tool ()
   (interactive)
@@ -120,16 +159,16 @@
 
 (defun android-project-create-1 (type args n)
   "thisandthat."
-  (let* (key value project-root
-             type manifest makein makefile
-             original-target target project-name)
+  (let* (key value project-root build-tool
+             type manifest makein makefile cmakelists
+             original-target target project-name result)
     (dolist (item args)
       (when item
-        (setq key (symbol-name (car item)))
-        (setq value (cdr item))
+        (setq key (car item)
+              value (cdr item))
         (when (and (stringp value)
                    (not (string= (string-trim value) "")))
-          (cond ((string= key "path")
+          (cond ((eq key 'path)
                  (if (not (file-directory-p value))
                      (make-directory value))
                  (if (string= (substring value -1) "/")
@@ -137,36 +176,65 @@
                      (setq project-root (concat value "/")))
                  (setq manifest (concat project-root "AndroidManifest.xml")
                        makein (concat project-root "AndroidMakefile.in")
-                       makefile (concat project-root "Makefile")))
-                ((string= key "target")
+                       makefile (concat project-root "Makefile")
+                       cmakelists (concat project-root "CMakeLists.txt")))
+                ((eq key 'target)
                  (setq original-target value
                        target (nth 1 (split-string value " "))))
-                ((string= key "name")
+                ((eq key 'name)
                  (setq project-name value))
-                ((string= key "type")
-                 (setq type value))))))
-    (let ((new-manifest (android-project-gen-file manifest
-                        'android-gen-dummy-manifest
-                        (list (cons 'android-project-name project-name)
-                              (cons 'android-native-project-type type))))
-          (new-makein (android-project-gen-file makein
-                      'android-gen-makein-buffer
-                      (list (cons 'android-target target)
-                            (cons 'android-native-project-type type))))
-          (new-makefile (android-project-gen-file makefile
-                        'android-gen-makefile-buffer
-                        (list (cons 'android-project-name project-name)
-                              (cons 'android-native-project-type type)))))
-      (when (and new-manifest new-makein new-makefile)
-        ;; change the property `program of the new project
-        (android-project-set-prop project-root) 
-        (message (apply 'format
-                        "successfully created a native project (Path: %s Name: %s Type: %s Target: %s)"
-                        (mapcar #'(lambda (x) (propertize x 'face font-lock-warning-face))
-                                (list project-root project-name type original-target))))))))
+                ((eq key 'type)
+                 (setq type value))
+                ((eq key 'build-tool)
+                 (setq build-tool value))))))
+    (save-excursion
+      (cond ((string= build-tool "cmake")
+           (setq result
+                 (and (android-project-gen-file
+                       manifest (list 'android-gen-dummy-manifest)
+                       (list (cons 'android-project-name project-name)
+                             (cons 'android-native-project-type type)))
+                      (android-project-gen-file
+                       cmakelists (list 'android-gen-cmakelists-header
+                                        'android-gen-cmakelists-native-tail)
+                       (list (cons 'android-target target)
+                             (cons 'android-project-name project-name)
+                             (cons 'android-native-project-type type)))))
+             (android-project-prop-reset
+              project-root (list (cons 'build-tool "cmake"))))
+          (t (setq result (and
+                           (android-project-gen-file
+                            manifest (list 'android-gen-dummy-manifest)
+                            (list (cons 'android-project-name project-name)
+                                  (cons 'android-native-project-type type)))
+                           (android-project-gen-file
+                            makein (list 'android-gen-makein-buffer)
+                            (list (cons 'android-target target)
+                                  (cons 'android-native-project-type type)))
+                           (android-project-gen-file
+                            makefile (list 'android-gen-makefile-buffer)
+                            (list (cons 'android-project-name project-name)
+                                  (cons 'android-native-project-type type)))))
+             (unless (string= build-tool "make")
+                 (setq build-tool "The build tool you\
+ provided is not support for this project, it will use the default tool make."))
+             (android-project-prop-reset
+              project-root (list (cons 'build-tool "make"))))))
+    (if result
+        (progn 
+            ;; change the property `program of the new project
+            (android-project-set-prop project-root) 
+            (message
+             (apply 'format
+                    "successfully created a native project (Path: %s Name: %s Type: %s Target: %s Build Tool: %s)"
+                    (mapcar #'(lambda (x) (propertize x 'face font-lock-warning-face))
+                            (list project-root project-name type original-target build-tool)))))
+        (message "Failed to create the project."))))
 
 (defmacro android-project-interactive-form (options)
   `(let ((targets-list (or android-targets-list (android-get-targets-list)))
+         (tools (list "ant" "cmake" "make"))
+         (types (list "c" "c++"))
          (project-root (when android-file-name (get (intern android-file-name android-file-prop-obarray) 'project-root))))
      (list
       `(,@(list
@@ -179,7 +247,7 @@
            (cons 'path
                  (read-file-name 
                   "path: " 
-                  project-root project-root
+                  project-root nil
                   nil nil 'file-directory-p)))
          (when (memq 'name ,options)
            (cons 'name
@@ -189,14 +257,17 @@
                  (read-from-minibuffer "activity: " nil nil nil)))
          (when (memq 'type ,options)
            (cons 'type
-                 (read-from-minibuffer "Project Type(c/c++): " "c" nil nil ,@(list "c" "c++") "c")))
+                 (read-from-minibuffer "Project Type(c/c++): " (car types) nil nil 'types (car types))))
                  ;; (read-from-minibuffer "Project Type(c/c++):" nil nil nil)))
          (when (memq 'package ,options)
            (cons 'package
                  (read-from-minibuffer "Package: " nil nil nil)))
          (when (memq 'library ,options)
            (cons 'library
-                 (read-from-minibuffer "Library: " nil nil nil))))))))
+                 (read-from-minibuffer "Library: " nil nil nil)))
+         (when (memq 'build-tool ,options)
+           (cons 'build-tool
+                 (read-from-minibuffer "Build Tool: " (car tools) nil nil 'tools (car tools)))))))))
 
 (defun android-project-refresh ()
   ""
@@ -209,7 +280,7 @@
         (funcall 'android-project-create-1 type args n)
     (funcall 'android-project-create type args n))))
 
-(defun android-project-new-proj (args)
+(defun android-project-new (args)
   ""
   (interactive (android-project-interactive-form 
                 (nth 1 (nth 0 android-project-management-type))))

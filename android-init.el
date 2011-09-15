@@ -92,22 +92,22 @@ the state obtained by executing `adb -s YOUR-DEVICE-NAME  get-state' is:
   "If multiple devices exist, when clicking the corresponding menu item,
 set the properity :DEVICE of the current file and the project which this file belongs to,
 as well as of all open files under the same project. In the end, redraw the device menu."
-  (let (buf (device-cons (cons device (android-get-device-state))))
+  (let (buf (device-cons (cons device (android-get-device-state)))
+            (project-root (get (intern android-file-name android-file-prop-obarray)
+                               'project-root)))
     (unless (string= device android-device)
       (loop for sym across android-file-prop-obarray
             do
             (when (and (symbolp sym)
                      (get sym 'project-root)
                      (string= (get sym 'project-root)
-                              (get (intern android-file-name
-                                           android-file-prop-obarray)
-                                   'project-root))
+                              project-root)
                      (setq buf (get-file-buffer (symbol-name sym))))
               (with-current-buffer buf
                 (setq android-device device)
                 (put sym 'device device-cons))))
       (android-project-prop-reset
-       android-file-name (list (cons 'device device-cons))))
+       project-root (list (cons 'device device-cons))))
     (android-refresh-device-menu)))
 
 (defun android-adb-device-command (command)
@@ -145,38 +145,45 @@ is used to control the enabilities of these commands on the menu")
              (get (intern android-file-name android-file-prop-obarray)
                   'command-enable))))
 
+(defun android-set-command-visibility (tool-sym)
+  "thisandthat."
+  (let ((command-enability (mapcar #'(lambda (x) (cons x t)) android-command-type)))
+    (cond ((eq tool-sym 'ant)
+         ;; (aset command-enable-list 5 nil)
+         (setcdr (assq 'debug-native  command-enability) nil))
+        ;; ((string= tool "cmake")
+        ;;  (aset command-enable-list 5 nil))
+        ((eq tool-sym 'make)
+         (setcdr (assq 'debug-activity  command-enability) nil)
+         (setcdr (assq 'debug-jni command-enability) nil)))
+  command-enability))
+
 (defun android-switch-build-tool (tool)
   "When switching to another building tool (on of ant, cmake and make ...)
 modify the property :build-tool of the current file and the project which this file belongs to,
 as well as of all open files under the same project. Furthermore, it is required to
 update the mode string and show the current build tool."
-  (let (command-enability buf (tool-sym (intern tool)))
+  (let* (buf
+         (tool-sym (intern tool))
+         (command-enability (android-set-command-visibility tool-sym))
+        (project-root (get (intern android-file-name android-file-prop-obarray) 'project-root)))
     (if (eq tool-sym android-build-tool)
         (android-set-mode-string)
       (loop for sym across android-file-prop-obarray
             do (when (and
                       (symbolp sym)
                       (get sym 'build-tool)
-                      (string= (get sym 'project-root)
-                               (get (intern android-file-name android-file-prop-obarray) 'project-root))
+                      (string= (get sym 'project-root) project-root)
                       (setq buf (get-file-buffer (symbol-name sym))))
                  (with-current-buffer buf
                    (setq android-build-tool tool-sym)
                    (put sym 'build-tool tool)
-                   (setq command-enability (mapcar #'(lambda (x) (cons x t)) android-command-type))
-                   (cond ((eq tool-sym 'ant)
-                          ;; (aset command-enable-list 5 nil)
-                          (setcdr (assq 'debug-native  command-enability) nil))
-                         ;; ((string= tool "cmake")
-                         ;;  (aset command-enable-list 5 nil))
-                         ((eq tool-sym 'make)
-                          (setcdr (assq 'debug-activity  command-enability) nil)
-                          (setcdr (assq 'debug-jni command-enability) nil)))
                    (put sym 'command-enable command-enability)
                    (android-set-mode-string))))
       (android-project-prop-reset
-       android-file-name (list (cons 'build-tool tool)
-                               (cons 'command-enable command-enability))))))
+       project-root
+       (list (cons 'build-tool tool)
+             (cons 'command-enable command-enability))))))
 
 
 (defun android-refresh-device-menu ()
@@ -285,7 +292,8 @@ the project root is stored in android-project-prop-obarray."
             (build-prop-file (concat project-root "build.properties"))
             (makein (concat project-root "AndroidMakefile.in"))
             (makefile (concat project-root "Makefile"))
-            (cmakelists (concat project-root "CMakeLists.txt")))
+            (cmakelists (concat project-root "CMakeLists.txt"))
+            build-tool)
         (put proj-sym 'project-root project-root)
         (put proj-sym 'command-enable (mapcar #'(lambda (x) (cons x t)) android-command-type))
         (put proj-sym 'device
@@ -304,12 +312,17 @@ the project root is stored in android-project-prop-obarray."
         (cond ((file-regular-p makein)
                (setq prop-list
                      (append prop-list
-                             (nconc (list (cons "build-tool" "make"))
+                             (nconc (list (cons "build-tool" "make")
+                                          (cons "native" "on")) ;; AndroidMakefile.in 
                                     (when (file-regular-p makefile)
-                                      (android-parse-prop makefile android-prop-makefile-regexp))))))
+                                      (android-parse-prop makefile android-prop-makefile-regexp))))
+                     build-tool 'make))
               ((file-regular-p cmakelists)
-               (setq prop-list (append prop-list (list (cons "build-tool" "cmake")))))
-              (t (setq prop-list (append prop-list (list (cons "build-tool" "ant"))))))
+               (setq prop-list (append prop-list (list (cons "build-tool" "cmake")))
+                     build-tool 'cmake))
+              (t (setq prop-list (append prop-list (list (cons "build-tool" "ant")))
+                       build-tool 'ant)))
+        (put proj-sym 'command-enable (android-set-command-visibility build-tool))
         (dolist (prop prop-list)
           (let* ((prop-sym (intern (car prop)))
                  (new-prop (cdr prop))
@@ -346,16 +359,16 @@ the symbol-plist of the project as the properties of the file."
      (setq android-mode-string (format " Android(%s)"  (symbol-name android-build-tool))))
 
 
-(defun android-project-prop-reset (file-name prop-list)
+(defun android-project-prop-reset (project-root prop-list)
   "If one or more properties of the project were changed, set it to the new one(s).
 Usually, it is also necessary to modify the corresponding proerties of all open files under this project."
-  (let (proj-root sym value)
+  (let (sym value)
     (dolist (prop prop-list)
       (setq sym (car prop)
             value (cdr prop))
       ;; (put  (intern file-name android-file-prop-obarray) sym value)
-      (setq proj-root (get (intern file-name android-file-prop-obarray) 'project-root))
-      (put (intern proj-root android-file-prop-obarray) sym value))))
+      ;; (setq proj-root (get (intern file-name android-file-prop-obarray) 'project-root))
+      (put (intern project-root android-project-prop-obarray) sym value))))
 
 (defun android-find-file-hook ()
   "Function for `find-file-hook' activating android minor mode mode if appropriate."

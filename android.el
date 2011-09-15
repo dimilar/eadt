@@ -75,7 +75,7 @@
       `("Android"
         "----"
         ("Project"
-         ["New Android Project" android-project-new-proj
+         ["New Android Project" android-project-new
           :help "Create a new android project using the \"android\" tool"]
          ["New Native Project" android-project-new-native
           :help "Create a native c/c++ project without android"]
@@ -164,7 +164,7 @@
     (define-key keymap (read-kbd-macro "C-c C-c d n") 'android-debug-native)
     (define-key keymap (read-kbd-macro "C-c C-c D") 'android-start-ddms)
     (define-key keymap (read-kbd-macro "C-c C-c e") 'android-start-emulator)    
-    (define-key keymap (read-kbd-macro "C-c C-c p a") 'android-project-new-proj)      
+    (define-key keymap (read-kbd-macro "C-c C-c p a") 'android-project-new)      
     (define-key keymap (read-kbd-macro "C-c C-c p n") 'android-project-new-native)      
     (define-key keymap (read-kbd-macro "C-c C-c p u") 'android-project-update-proj)   
     (define-key keymap (read-kbd-macro "C-c C-c p l") 'android-project-new-libproj)   

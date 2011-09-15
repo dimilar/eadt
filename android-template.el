@@ -52,6 +52,7 @@
 
 (defun android-gen-file (file-name gen-fun &optional vars)
   "thisandthat."
+  ;;; ?`find-file-literally'
   (let ((buf (find-file file-name)) local-variable)
       (with-current-buffer buf
         (when vars
@@ -64,9 +65,11 @@
              ((eq (car var) 'android-native-project-type)
               (setq android-native-project-type (cdr var))))))
         (delete-region (point-min) (point-max))
-        (apply gen-fun nil)
+        (dolist (fun gen-fun)
+          (apply fun nil))
         (save-buffer file-name)
-        (kill-buffer buf))))
+        (kill-buffer buf))
+      (if (file-exists-p file-name) file-name nil)))
 
 (defun android-gen-read-template (strings)
   "Converts an autocode template represented as a list
@@ -115,7 +118,7 @@ tempo."
 	     "insert into AndroidManifest.xml."))
 	  (set-default sym val)))
 
-(defcustom android-cmakelist-template
+(defcustom android-cmakelist-header-template
   (list 
    "\"################################################################################\" 'n"
    "\"#\" 'n"
@@ -125,53 +128,100 @@ tempo."
    "\"################################################################################\" 'n"
    "\"\" 'n"
    "\"# Common Properties\" 'n"
-   "\"CMAKE_MINIMUM_REQUIRED\\\( VERSION 2.6\\\)\" 'n"
-   "\"if\\\(NOT CMAKE_TOOLCHAIN_FILE\\\)\" 'n"
-   "\"    default_action\\\(\\\)\" 'n"
-   "\"endif\\\(NOT CMAKE_TOOLCHAIN_FILE\\\)\" 'n"
-   "\"set\\\( CMAKE_COLOR_MAKEFILE ON\\\)\" 'n"
-   "\"set\\(ANDROID_SDK_TARGET \\\"\" android-target \"\\\"\\) \" 'n"
-   "\"include\\\(\\\"\"android-cmake-include-file \"\\\"\\\)\" 'n"
-   "\"set\\\(CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS true\\\)\" 'n"
-   "\" include_directories\\\(SYSTEM \\\"$\{ANDROID_NDK_TOOLCHAIN_ROOT\}/user/include\\\" \\\)\" 'n"
-   "\"if\\\(WITH_OPENCV\\\)\" 'n"
-   "\"    opencv_settings\\\(\\\)\" 'n"
-   "\"endif\\\(WITH_OPENCV\\\)\" 'n'n"
-   "\"if\\\(DEFINED DEVICE\\\)\" 'n"
-   "\"  set\\\(DEVICE \\\"-s ${DEVICE}\\\"\\\)\" 'n"
-   "\"else\\\(\\\)\" 'n"
-   "\"  set\\\(DEVICE \\\"\\\"\\\)\" 'n"
-   "\"endif\\\(\\\)\" 'n"
-   "\"set\\\(DEVICE_ARGS \\\"${DEVICE}\\\"\\\)\" 'n'n"
-
-   "\"set\\\(LINKER_LIBS log dl m\\\)\" 'n"
-   "\"find_android_sdk\\\(\\\)\" 'n"
-   "\"set(ANDROID_PROJECT_NAME \\\"\" android-project-name \"\\\") \" 'n"
-   "\"string(REGEX REPLACE \\\"^(.+)/\\\\\\\\.*(.+)$\\\" \\\"\\\\\\\\1\\\" package_name  \\\"${ANDROID_PROJECT_NAME}\\\")\" 'n"
-   "\"string(REGEX REPLACE \\\"^(.+)/\\\\\\\\.*(.+)$\\\" \\\"\\\\\\\\2\\\" program_name  \\\"${ANDROID_PROJECT_NAME}\\\")\" 'n"   
-   "\"add_android_project\\\(\\\"$\{program_name}\\\" \\\"$\{CMAKE_CURRENT_SOURCE_DIR\}/\\\" \" (or (car (android-get-abi)) (car (split-string (car android-armeabi) " "))) \" \\\)\" 'n"
-   "\"add_custom_target\\\(install \" 'n"
-   "\"   COMMAND adb \\\"${DEVICE_ARG}\\\" -e install -r \\\"$\{CMAKE_BINARY_DIR\}/bin/$\{program_name\}.apk\\\"\" 'n"
-   "\"   DEPENDS $\{program_name\}_android_project\" 'n"
-   "\"\\\)\" 'n"
-   "\"add_custom_target\\\(uninstall \" 'n"
-   "\"   COMMAND adb \\\"${DEVICE_ARG}\\\" -e uninstall \\\"$\{package_name\}\\\"\" 'n"
-   "\"\\\)\" 'n"
+   "\"CMAKE_MINIMUM_REQUIRED( VERSION 2.6)\" 'n"
+   "\"if(NOT CMAKE_TOOLCHAIN_FILE)\" 'n"
+   "\"    default_action()\" 'n"
+   "\"endif(NOT CMAKE_TOOLCHAIN_FILE)\" 'n"
+   "\"set( CMAKE_COLOR_MAKEFILE ON)\" 'n"
+   "\"set(ANDROID_SDK_TARGET \\\"\" android-target \"\\\") \" 'n"
+   "\"set(android_dependencies)\"'n"
+   "\"include(\\\"\"android-cmake-include-file \"\\\")\" 'n"
+   "\"set(CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS true)\" 'n"
+   "\" include_directories(SYSTEM \\\"$\{ANDROID_NDK_TOOLCHAIN_ROOT\}/user/include\\\" )\" 'n"
+   "\"if(WITH_OPENCV)\" 'n"
+   "\"    opencv_settings()\" 'n"
+   "\"endif(WITH_OPENCV)\" 'n'n"
+   "\"if(DEFINED DEVICE)\" 'n"
+   "\"  set(DEVICE \\\"-s\\\" \\\"${DEVICE}\\\")\" 'n"
+   "\"else()\" 'n"
+   "\"  set(DEVICE \\\"\\\")\" 'n"
+   "\"endif()\" 'n"
+   "\"set(DEVICE_ARG ${DEVICE})\" 'n'n"
+   "\"set(LINKER_LIBS log dl m)\" 'n"
+   "\"find_android_sdk()\" 'n"   
    )
-  "*Template for creating a Makefile for android project.
-Setting this variable defines a template instantiation command
-`android-gen-cmakebuffer', as a side-effect."
+  ""
   :group 'android-mode
   :type '(repeat string)
   :set '(lambda (sym val)
-	  (defalias 'android-gen-cmakebuffer
+	  (defalias 'android-gen-cmakelists-header
 	    (tempo-define-template
-	     "android-cmakefile"
+	     "android-cmakelist-header"
 	     (android-gen-read-template val)
 	     nil
-	     "insert makefile buffer."))
+	     "insert cmakelists header buffer."))
 	  (set-default sym val)))
 
+(defcustom android-cmakelist-tail-template
+  (list 
+   "\"set(ANDROID_PROJECT_NAME \\\"\" android-project-name \"\\\") \" 'n"
+   "\"string(REGEX REPLACE \\\"^(.+)/\\\\\\\\.*(.+)$\\\" \\\"\\\\\\\\1\\\" package_name  \\\"${ANDROID_PROJECT_NAME}\\\")\" 'n"
+   "\"string(REGEX REPLACE \\\"^(.+)/\\\\\\\\.*(.+)$\\\" \\\"\\\\\\\\2\\\" program_name  \\\"${ANDROID_PROJECT_NAME}\\\")\" 'n"   
+   "\"add_android_project(\\\"$\{program_name}\\\" \\\"$\{CMAKE_CURRENT_SOURCE_DIR\}/\\\" \" (or (car (android-get-abi)) (car (split-string (car android-armeabi) " "))) \" )\" 'n"
+   "\"add_custom_target(install \" 'n"
+   "\"   COMMAND ${ADB_EXECUTABLE} ${DEVICE_ARG} -e install -r \\\"$\{CMAKE_BINARY_DIR\}/bin/$\{program_name\}.apk\\\"\" 'n"
+   "\"   DEPENDS $\{program_name\}_android_project\" 'n"
+   "\")\" 'n"
+   "\"add_custom_target(uninstall \" 'n"
+   "\"   COMMAND ${ADB_EXECUTABLE} ${DEVICE_ARG} -e uninstall \\\"$\{package_name\}\\\"\" 'n"
+   "\")\" 'n"
+   "\"add_custom_target(run \" 'n"
+   "\"   COMMAND ${ADB_EXECUTABLE} ${DEVICE_ARG} shell am start -n \\\"${package_name}/.${program_name}\\\"\" 'n"
+   "\")\" 'n"   
+   )
+  ""
+  :group 'android-mode
+  :type '(repeat string)
+  :set '(lambda (sym val)
+	  (defalias 'android-gen-cmakelists-tail
+	    (tempo-define-template
+	     "android-cmakelists-tail"
+	     (android-gen-read-template val)
+	     nil
+	     "insert cmakelist tail buffer."))
+	  (set-default sym val)))
+
+
+(defcustom android-cmakelist-native-tail-template
+  (list 
+   "\"set(program  \\\"\" android-project-name \"\\\") \" 'n"
+   "\"set(INSTALL_DIR  \\\"/data/tmp\\\") \" 'n"
+   "\"ADD_EXECUTABLE(\\\"${program}\\\" \\\"./${program}.\"(if (string= android-native-project-type \"c++\") (insert \"cpp\") (insert \"c\"))\"\\\") \" 'n"
+   "\"# ADD_DEPENDENCIES(\\\"${program}\\\" ${android_dependencies}) \" 'n"
+   "\"TARGET_LINK_LIBRARIES(\\\"${program}\\\" ${LINKER_LIBS} ${android_dependencies}) \" 'n"
+   "\"set_target_properties(\\\"${program}\\\" PROPERTIES OUTPUT_NAME \\\"${program}\\\" RUNTIME_OUTPUT_DIRECTORY \\\"${EXECUTABLE_OUTPUT_PATH}\\\")\" 'n"
+   "\"add_custom_target(install \" 'n"
+   "\"   COMMAND ${ADB_EXECUTABLE} ${DEVICE_ARG} push \\\"${EXECUTABLE_OUTPUT_PATH}/${program}\\\" \\\"${INSTALL_DIR}/${program_name}\\\"\" 'n"
+   "\"   DEPENDS ${program} \"'n"
+   "\")\" 'n"
+   "\"add_custom_target(uninstall \" 'n"
+   "\"   COMMAND ${ADB_EXECUTABLE} ${DEVICE_ARG} shell rm \\\"${INSTALL_DIR}/${program}\\\"\" 'n"
+   "\")\" 'n"
+   "\"add_custom_target(run \" 'n"
+   "\"   COMMAND ${ADB_EXECUTABLE} ${DEVICE_ARG} shell \\\"${INSTALL_DIR}/${program}\\\"\" 'n"
+   "\")\" 'n"   
+   )
+  ""
+  :group 'android-mode
+  :type '(repeat string)
+  :set '(lambda (sym val)
+	  (defalias 'android-gen-cmakelists-native-tail
+	    (tempo-define-template
+	     "android-cmakelist-native-tail"
+	     (android-gen-read-template val)
+	     nil
+	     "insert cmakelist native tail buffer."))
+	  (set-default sym val)))
 
 
 (defcustom android-makein-template

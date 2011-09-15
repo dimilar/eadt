@@ -19,16 +19,19 @@ endmacro()
 macro(opencv_settings)
   include("${ANDROID_NDK_TOOLCHAIN_ROOT}/user/share/OpenCV/OpenCVConfig.cmake")
   SET (OPENCV_DIR /scratch/programming/android/cmake/opencv/)
-  SET (android_dependencies opencv_contrib opencv_legacy opencv_objdetect opencv_calib3d opencv_features2d opencv_video opencv_highgui opencv_ml opencv_imgproc opencv_flann opencv_core)
+  SET (opencv_dependencies opencv_contrib opencv_legacy opencv_objdetect opencv_calib3d opencv_features2d opencv_video opencv_highgui opencv_ml opencv_imgproc opencv_flann opencv_core)
 
   IF(WITH_ANDROID_CAMERA AND NOT BUILD_SHARED_LIBS)
     LIST(APPEND OPENCV_EXTRA_JAVA_MODULES androidcamera)
   ENDIF()
 
   if(NOT BUILD_SHARED_LIBS)
-    LIST(APPEND android_dependencies opencv_androidcamera)
+    LIST(APPEND opencv_dependencies opencv_androidcamera)
   endif()
-LIST(APPEND android_dependencies libjpeg libpng libjasper libtiff zlib)
+  LIST(APPEND opencv_dependencies libjpeg libpng libjasper libtiff zlib)
+  foreach(lib ${opencv_dependencies})
+    list(APPEND android_dependencies "${lib}")
+  endforeach()
 endmacro()
 
 macro(find_android_sdk)
@@ -39,7 +42,7 @@ macro(find_android_sdk)
 
   #find android SDK
   find_host_program(ANDROID_EXECUTABLE
-    NAMES android.bat android
+    NAMES android.exe android.bat android
     PATHS "${ANDROID_SDK_ENV_PATH}/tools/"
     "${ProgramFiles_ENV_PATH}/Android/android-sdk/tools/"
     "/opt/android-sdk/tools/"
@@ -47,6 +50,17 @@ macro(find_android_sdk)
     "/opt/android-sdk-mac_x86/tools/"
     "/opt/android-sdk-linux_86/tools/"
     "/opt/android-sdk-mac_86/tools/"
+    )
+
+  find_host_program(ADB_EXECUTABLE
+    NAMES  adb.exe adb.bat adb
+    PATHS "${ANDROID_SDK_ENV_PATH}/platform-tools/"
+    "${ProgramFiles_ENV_PATH}/Android/android-sdk/platform-tools/"
+    "/opt/android-sdk/platform-tools/"
+    "/opt/android-sdk-linux_x86/platform-tools/"
+    "/opt/android-sdk-mac_x86/platform-tools/"
+    "/opt/android-sdk-linux_86/platform-tools/"
+    "/opt/android-sdk-mac_86/platform-tools/"
     )
 
   if(ANDROID_EXECUTABLE)

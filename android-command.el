@@ -136,7 +136,7 @@
 (defalias 'android-cmake-install #'(lambda () (android-cmake-command "install")))
 (defalias 'android-cmake-uninstall #'(lambda () (android-cmake-command "uninstall")))
 (defalias 'android-cmake-clean #'(lambda () (android-cmake-command "clean")))
-(defalias 'android-cmake-run #'(lambda () (android-run-activity)))
+(defalias 'android-cmake-run #'(lambda () (android-cmake-command "run")))
 
 (defalias 'android-make-compile #'(lambda () (android-make-command)))
 (defalias 'android-make-install #'(lambda () (android-make-command "install")))
