@@ -107,7 +107,7 @@
               ;; if not ant and cmake
               ((not (string= build-tool "ant"))
                (setq build-tool-summary "The build tool you\
- provided is not support for this project, it will use the default tool ant.")))
+ provided is not support for this project, use the default tool ant instead.")))
         (setq build-tool-summary
               (concat "Build tool: "
                       (propertize build-tool-summary 'face font-lock-warning-face))))
@@ -217,7 +217,7 @@
                                   (cons 'android-native-project-type type)))))
              (unless (string= build-tool "make")
                  (setq build-tool "The build tool you\
- provided is not support for this project, it will use the default tool make."))
+ provided is not support for this project, use the default tool make instead."))
              (android-project-prop-reset
               project-root (list (cons 'build-tool "make"))))))
     (if result
