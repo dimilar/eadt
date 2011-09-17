@@ -30,8 +30,6 @@
 ;; 
 ;;; Code:
 
-
-
 (defvar android-tools-alist
   '(("android" . "")
     ("adb" . "")

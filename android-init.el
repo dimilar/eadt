@@ -79,6 +79,15 @@ android-devices-alist"
               (append android-devices-alist (list (cons device state)))))
       (setq start (match-end 2)))))
 
+(defun android-get-current-device ()
+  (let ((device (get (intern android-file-name android-file-prop-obarray) 'device)))
+    (when (and device (assoc (car device) android-devices-alist))
+      (when (and (not (string= (cdr device) "device"))
+                 (not (string= (cdr device) "error: unknown host service")))
+        (call-process-shell-command (android-get-tool-path "adb") nil nil nil
+                                    (format " -s %s wait-for-device" (car device))))
+      (car device))))
+
 (defsubst android-get-device-state ()
   "Get the state of the device specified in the property :device of the current
 file. However, for those devices connected through the internet,

@@ -36,32 +36,35 @@
 
 
 (defcustom android-sdk-jdb-port "29882"
-  ""
+  "default port supplied to `android-activity-jdb-debug'"
   :type 'string
   :group 'android-mode)
 
 (defcustom android-jni-gdb-port "5039"
-  ""
+  "Default port supplied to `android-jni-gdb-port'."
   :type 'string
   :group 'android-mode)
 
 (defcustom android-native-gdb-port "1234"
-  ""
+  "Default port supplied to `android-native-gdb-debug'."
   :type 'string
   :group 'android-mode)
 
 (defcustom android-gdbserver-path "/data/tmp"
-  ""
+  "For `android-native-gdb-debug', the default place to store
+the gdbserver which aims at the arm platform."
   :type 'string
   :group 'android-mode)
 
 (defcustom android-native-program-dir "/data/tmp"
-  ""
+  "The default place to put the binary program for `android-native-gdb-debug'"
   :type 'string
   :group 'android-mode)
 
 (defun android-package-class ()
-  ""
+  "History of pakcakges(name) and pathes of android projects. Return a list consisting of
+two elements, which contain classes and pathes respectively. Note the CAR the each element is usually
+the class of path of the current open project."
   (let ((current-project (intern android-file-name android-file-prop-obarray))
         src-path source-dir package class class-list path-list project)
     (dotimes (iter 10)
@@ -82,24 +85,10 @@
               )))))
     (list class-list path-list)))
 
-(defun android-launch-activity (device package-class)
-  ""
-  (let* ((adb-tool-path (android-get-tool-path "adb"))
-         (package-name (car package-class))
-         (activity (concat (nth 0 package-class) "/." (nth 1 package-class)))
-        package-process-id)
-    (when (setq package-process-id (android-get-process-id device package-name))
-        (call-process-shell-command
-         adb-tool-path nil nil nil
-         (format " %s shell kill -9 %s" device package-process-id)))
-    (call-process-shell-command
-     adb-tool-path nil nil nil
-     (format " %s shell am start -n %s" device activity))
-    (setq package-process-id
-          (android-get-process-id device package-name))))
-
 (defun android-get-process-id (device package-name)
-  "thisandthat."  
+  "Execute the command >adb -s your-device shell ps< and dump all results into a
+buffer, then parse the buffer to exract the process id of the given package. Return the
+process id or nil."  
   (let ((adb-tool-path (android-get-tool-path "adb"))
         (buffer (concat "*android-get-process-id-" package-name))
         id)
@@ -116,7 +105,8 @@
 (defun adb-forward-port  (device protocol &optional port-pair)
   "Forwarding of requests on a specific host port to a different
 port on an emulator/device instance. If optional parameter port-pair
- is nil, we have to find the jdwp port by ourself."
+ is nil, we have to find the jdwp port by ourself. If success, return 0,
+otherwise return a positive number (error code)."
   (let* (local-port
          remote-port
          (ports
@@ -135,9 +125,14 @@ port on an emulator/device instance. If optional parameter port-pair
        (android-get-tool-path "adb") nil nil nil
        (format " forward tcp:%s %s:%s" local-port protocol remote-port)))))
 
-
+;;;###autoload
 (defun android-activity-jdb-debug ()
-  "Please kill the existent process of the package to be debugged."
+  " Function to debug the activity using jdb. steps:
+1. forward a remote port to a local port
+2. interactively run the `jdb' command
+3. sleep a second to waiting for the `jdb' finished
+4. launch the activity from the device or emulator
+Please kill the existent process of the package to be debugged."
   (interactive)
   (let* ((device (android-get-current-device))
          (device-arg (if device (format " -s %s " device) ""))
@@ -169,8 +164,9 @@ port on an emulator/device instance. If optional parameter port-pair
            (format "%s %s shell am start -n %s" adb-tool-path device-arg (car classes))))
       (error "Failed to forward the port"))))
 
+;;;###autoload
 (defun android-jni-gdb-debug ()
-  "thisandthat."
+  "Function to debug the jni library. Please refer the script ndk-debug."
   (interactive)
   (let* ((adb-tool-path (android-get-tool-path "adb"))
          (package-info (android-package-class))
@@ -230,8 +226,13 @@ port on an emulator/device instance. If optional parameter port-pair
     ;; (error (format "package: %s is not running" package-name)
     ))
 
-
+;;;###autoload
 (defun android-native-gdb-debug ()
+  "Function to debug the native program. Steps:
+1. if there is no gdbserver available on your device or emulator, copy one
+2. if any existent debugging process is running, kill them (both program and gdbserver)
+3. forward port
+4. run gdb interactively"
   (interactive)
   (let* ((app (get (intern android-file-name android-file-prop-obarray) 'program))
          (device (android-get-current-device))

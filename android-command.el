@@ -32,18 +32,8 @@
 ;;; Code:
 
 
-
-(defun android-get-current-device ()
-  (let ((device (get (intern android-file-name android-file-prop-obarray) 'device)))
-    (when (and device (assoc (car device) android-devices-alist))
-      (when (and (not (string= (cdr device) "device"))
-                 (not (string= (cdr device) "error: unknown host service")))
-        (call-process-shell-command (android-get-tool-path "adb") nil nil nil
-                                    (format " -s %s wait-for-device" (car device))))
-      (car device))))
-
 (defun android-ant-command (task &optional args)
-  ""
+  "The interface to run command \"ant compile|install|uninstall\""
   (when android-file-name
     (let* ((file-sym (intern android-file-name android-file-prop-obarray))
            (default-directory (get file-sym 'project-root))
@@ -51,14 +41,16 @@
            (device-arg (when device (format " -Dadb.device.arg=\"-s %s\" " device))))
       (compile (concat (android-get-tool-path "ant") device-arg " " task)))))
 
+;; TODO
 (defun android-ndk-command (task &optional args)
-  ""
+  "The interface to run command \"ndk-build\""
   (when android-file-name
     (let ((default-directory (get (intern android-file-name android-file-prop-obarray) 'project-root))
           (local-task (if (string= task "compile") "" task)))
       (compile (concat (android-get-tool-path "ndk-build") " " local-task)))))
 
 (defun android-cmake-command (task &optional args)
+  "The interface to run command \"cmake ../ & make install|uninstall|run|compile...\""
   (when android-file-name
     (let* ((file-sym (intern android-file-name android-file-prop-obarray))
            (build-dir (concat (get file-sym 'project-root) "build/"))
@@ -76,7 +68,7 @@
       (compile make-command))))
 
 (defun android-make-command (&optional task args)
-  ""
+  "The interface to run command \"make install|uninstall|run|compile...\""
   (when android-file-name
     (let* ((default-directory
             (get (intern android-file-name android-file-prop-obarray) 'project-root))
@@ -85,7 +77,7 @@
       (compile (concat "make " device-arg (or task nil))))))
 
 (defun android-debug-command (task &optional args)
-  ""
+  "The interface to run debug command"
   (when android-file-name
     (let ((default-directory
             (get (intern android-file-name android-file-prop-obarray) 'project-root)))
@@ -98,6 +90,7 @@
     (apply build-function nil)))
 
 (defsubst android-run-activity ()
+  "Function to launch activity from your device or emulator."
   (save-excursion
     (let* ((file-sym (intern android-file-name android-file-prop-obarray))
            (default-directory (get file-sym 'project-root))
@@ -107,24 +100,6 @@
        (list (get file-sym 'package)
              (get file-sym 'android:name))))))
 
-(defun android-gen-R ()
-  ""
-  (interactive)
-  (let* ((aapt-path (android-get-tool-path "aapt"))
-         (file-sym (intern android-file-name android-file-prop-obarray))
-         (project-root (get file-sym 'project-root))
-         (target (get file-sym 'target))
-         (sdk-dir (get file-sym 'sdk.dir))
-         (manifest-file (concat project-root "AndroidManifest.xml"))
-         (resource-dir (concat project-root "res"))
-         (include-file (concat sdk-dir "/platforms/" target "/android.jar"))
-         (dist-dir (concat project-root "gen")))
-    (setq default-directory project-root)
-    (unless (file-directory-p dist-dir)
-        (shell-command (format "mkdir %s" dist-dir)))
-    (shell-command
-     (format "%s package -f -m -M %s -S %s -I %s -J %s"
-             aapt-path manifest-file resource-dir include-file dist-dir))))
 
 (defalias 'android-ant-compile #'(lambda () (android-ant-command "compile")))
 (defalias 'android-ant-install #'(lambda () (android-ant-command "install")))

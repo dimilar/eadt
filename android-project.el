@@ -32,11 +32,6 @@
 ;;; Code:
 
 
-
-(defmacro string-trim (string)
-  ""
-  `(replace-regexp-in-string "\\(^[ \t]*\\|[ \t]*$\\)" "" ,string))
-
 (defconst android-project-management-type
   '((("create" . "project") (target name path activity package build-tool))
     (("update" . "project") (target path name))
@@ -273,6 +268,7 @@
   ""
   
   )
+
 (defun android-project-command (args n)
   ""
   (let* ((type (car (nth n android-project-management-type))))

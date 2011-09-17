@@ -184,6 +184,11 @@
   ""
   (locate-dominating-file file "AndroidManifest.xml"))
 
+(defmacro string-trim (string)
+  ""
+  `(replace-regexp-in-string "\\(^[ \t]*\\|[ \t]*$\\)" "" ,string))
+
+
 (require 'android-tools)
 (require 'android-init)
 (require 'android-command)
@@ -191,7 +196,7 @@
 (require 'android-launch)
 (require 'android-target)
 (require 'android-project)
-(require 'android-template)
+(require 'android-gen)
 
 
 (defvar android-minor-mode-map (android-minor-keymap))
