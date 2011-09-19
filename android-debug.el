@@ -191,7 +191,10 @@ Please kill the existent process of the package to be debugged."
                   "/build/core/build-local.mk"))
          package-process-id gdbserver-process-id abi
          data-dir app-out app-process debug-socket)
-    (setq package-process-id (android-launch-activity device-arg package-class))
+    ;; (setq package-process-id (android-launch-activity device-arg package-class))
+    (start-process-shell-command
+     "*android start activity*" nil
+     (format "%s %s shell am start -n %s" adb-tool-path device-arg (car classes)))
     (setq gdbserver-process-id (android-get-process-id device-arg "gdbserver"))
     (when gdbserver-process-id
       (call-process-shell-command

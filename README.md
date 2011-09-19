@@ -41,8 +41,28 @@ Usually, these two files is in the same folder as the lisp code.
    - C-c C-c D Start the debugging tool DDMS (the Dalvik Debug Monitor Server)
 
 # Features
-1. The eadt fully supports android project management. If android SDK and targets are installed, command prompt and completion make it convenient to create and update an android project. Furthermore, cmake and make are added as two alternatives of build tools.
+## The eadt fully supports android project management. If android SDK and targets are installed, command prompt and completion make it convenient to create and update an android project. Furthermore, cmake and make are added as two alternatives of build tools.
+![Menu of project management](eadt/raw/master/screenshot/project-menu.png)
 
-#![Menu of project management](eadt/raw/master/screenshot/project-menu.png)
+![Prompt for available targets](eadt/raw/master/screenshot/targets-prompt.png)
 
-#![Prompt for available targets](eadt/raw/master/screenshot/targets-prompt.png)
+## Manage multiple devices/emulator, allow use to select a specific device for any project.
+* Devices/Emulators management
+![Devices/Emulators management](eadt/raw/master/screenshot/devices.png)
+
+## Eadt is integrated with powerful gud interface and allows to remotely debug native program, jni and activity.
+![Debug activity with jdb](eadt/raw/master/screenshot/debug-activity.png)
+
+![Debug native program with gdb](eadt/raw/master/screenshot/debug-native.png)
+
+![Degbu Java Native Interface](eadt/raw/master/screenshot/debug-jni.png)
+
+## Eadt is a plugin to make emacs as integrated control platform for Android development
+![Launch logcat and ddms from emacs](eadt/raw/master/screenshot/launch.png)
+
+## Intelligent package management
+Eadt allow user to compile, insatll, uninstall, run and clean a package according to different environment variables and build tools.
+<!-- ![Compile, insatll, uninstall, run and clean a package](eadt/raw/master/screenshot/launch.png) -->
+
+
+
