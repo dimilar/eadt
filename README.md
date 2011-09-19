@@ -5,20 +5,26 @@ put the two lines below in your ```.emacs```:
      (require 'android)
 
 Ensure the following variables are configured:
+
 1. Type of floating point support, default value is "armeabi-v7a with NEON"
-   (customize-variable 'android-armeabi)  
+
+    (customize-variable 'android-armeabi)
 
 2. The pathes where to find the tools in common use
+
     (customize-variable 'android-environment-variables) 
+
 Optionally, if you plan to use the cmake as the build tools, please configure the two variables below
 
-(setq android-cmake-include-file "/path/to/the/android.cmake")
-(setq android-cmake-toolchain-file "/path/to/the/android.toolchain.cmake")
-usually, these two files is in the same folder as the lisp code.
+    (setq android-cmake-include-file "/path/to/the/android.cmake")
+    (setq android-cmake-toolchain-file "/path/to/the/android.toolchain.cmake")
+
+Usually, these two files is in the same folder as the lisp code.
 
 3. If you have known the name of your device/emulator, please configure the variable:
- (customize-variable 'android-device)   
-or (set-default android-device "the name of your device/emulator")
+
+    (customize-variable 'android-device)   or
+    (set-default android-device "the name of your device/emulator")
 
 # Default key bindings
  - Default key bindings are:
@@ -35,3 +41,6 @@ or (set-default android-device "the name of your device/emulator")
    - C-c C-c D Start the debugging tool DDMS (the Dalvik Debug Monitor Server)
 
 # Features
+1. The eadt fully supports android project management. If android SDK and targets are installed, command prompt and completion make it convenient to create and update an android project. Furthermore, cmake and make are added as two alternatives of build tools.
+#![Menu of project management](screenshot/project-menu.png)
+#![Prompt for available targets](screenshot/targets-prompt.png)
