@@ -98,11 +98,11 @@
          :help "Compile the source code of the project"
          :active (android-get-command-enable-state 'compile)]
         ["Install" android-install
-         :help "Install the binary program or apk to your emulator"
+         :help "Install the binary program or apk to your device/emulator"
          :active (android-get-command-enable-state 'install)]
         ["Run" android-run
          :active (android-get-command-enable-state 'run)         
-         :help "Run the program or package on the emulator"]
+         :help "Run the program or package on the device/emulator"]
         ["Clean " android-clean
          :active (android-get-command-enable-state 'clean)         
          :help "Get rid of all the objects files, executables or apk"]        
@@ -115,7 +115,7 @@
          :help "Call the jdb to debug the Android activity "]
         ["Debug Jni" android-debug-jni
          :active (android-get-command-enable-state 'debug-jni)
-         :help "Execute Remote debugging the Java Native Interface using gdb"]
+         :help "Remotely debug the Java Native Interface with gdb"]
         ["Debug Native Program" android-debug-native
          :active (android-get-command-enable-state 'debug-native)
          :help "Debug the binary program of the native project"]
