@@ -1,16 +1,16 @@
 # Installation
-put the two lines below in your ```.emacs```:
+## put the two lines below in your ```.emacs```:
 
      (add-to-list 'load-path "/path/to/eadt")
      (require 'android)
 
-Ensure the following variables are configured:
+## Ensure the following variables are configured:
 
-## Type of floating point support, default value is "armeabi-v7a with NEON"
+* Type of floating point support, default value is "armeabi-v7a with NEON"
 
     (customize-variable 'android-armeabi)
 
-## The pathes where to find the tools in common use
+* The pathes where to find the tools in common use
 
     (customize-variable 'android-environment-variables) 
 
@@ -21,7 +21,7 @@ Optionally, if you plan to use the cmake as the build tools, please configure th
 
 Usually, these two files is in the same folder as the lisp code.
 
-## If you have known the name of your device/emulator, please configure the variable:
+* If you have known the name of your device/emulator, please configure the variable:
 
     (customize-variable 'android-device)   or
     (set-default android-device "the name of your device/emulator")
