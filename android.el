@@ -134,15 +134,15 @@
           :active t :style radio :selected (eq android-build-tool 'make)
           ]
          )
-        ("Switch Native Project Type"
-         ["C" (setq-default android-native-project-type "c")
-          :help "C program"
-          :active t :style radio :selected (string= android-native-project-type "c")
-          ]
-         ["C++" (setq-default android-native-project-type "c++")
-          :help "C++ program"
-          :active t :style radio :selected (string= android-native-project-type "c++")
-          ])
+        ;("Switch Native Project Type"
+        ; ["C" (setq-default android-native-project-type "c")
+        ;  :help "C program"
+        ;  :active t :style radio :selected (string= android-native-project-type "c")
+        ;  ]
+        ; ["C++" (setq-default android-native-project-type "c++")
+        ;  :help "C++ program"
+        ;  :active t :style radio :selected (string= android-native-project-type "c++")
+        ;  ])
         "----"
         ["Start Logcat" android-logcat
          :help "Launch the Android logging system"]
