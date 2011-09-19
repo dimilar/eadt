@@ -6,11 +6,11 @@ put the two lines below in your ```.emacs```:
 
 Ensure the following variables are configured:
 
-1. Type of floating point support, default value is "armeabi-v7a with NEON"
+## Type of floating point support, default value is "armeabi-v7a with NEON"
 
     (customize-variable 'android-armeabi)
 
-2. The pathes where to find the tools in common use
+## The pathes where to find the tools in common use
 
     (customize-variable 'android-environment-variables) 
 
@@ -21,10 +21,10 @@ Optionally, if you plan to use the cmake as the build tools, please configure th
 
 Usually, these two files is in the same folder as the lisp code.
 
-3. If you have known the name of your device/emulator, please configure the variable:
+## If you have known the name of your device/emulator, please configure the variable:
 
     (customize-variable 'android-device)   or
-    (set-default android-device "the name of your device/emulator")
+        (set-default android-device "the name of your device/emulator")
 
 # Default key bindings
  - Default key bindings are:
