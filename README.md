@@ -24,7 +24,7 @@ Usually, these two files is in the same folder as the lisp code.
 ## If you have known the name of your device/emulator, please configure the variable:
 
     (customize-variable 'android-device)   or
-        (set-default android-device "the name of your device/emulator")
+    (set-default android-device "the name of your device/emulator")
 
 # Default key bindings
  - Default key bindings are:
@@ -43,6 +43,6 @@ Usually, these two files is in the same folder as the lisp code.
 # Features
 1. The eadt fully supports android project management. If android SDK and targets are installed, command prompt and completion make it convenient to create and update an android project. Furthermore, cmake and make are added as two alternatives of build tools.
 
-#![Menu of project management](screenshot/project-menu.png)
+#![Menu of project management](eadt/raw/master/screenshot/project-menu.png)
 
-#![Prompt for available targets](screenshot/targets-prompt.png)
+#![Prompt for available targets](eadt/raw/master/screenshot/targets-prompt.png)
