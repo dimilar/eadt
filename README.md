@@ -8,23 +8,23 @@
 
 * Type of floating point support, default value is "armeabi-v7a with NEON"
 
-    (customize-variable 'android-armeabi)
+     (customize-variable 'android-armeabi)
 
 * The pathes where to find the tools in common use
 
-    (customize-variable 'android-environment-variables) 
+     (customize-variable 'android-environment-variables) 
 
 Optionally, if you plan to use the cmake as the build tools, please configure the two variables below
 
-    (setq android-cmake-include-file "/path/to/the/android.cmake")
-    (setq android-cmake-toolchain-file "/path/to/the/android.toolchain.cmake")
+     (setq android-cmake-include-file "/path/to/the/android.cmake")
+     (setq android-cmake-toolchain-file "/path/to/the/android.toolchain.cmake")
 
 Usually, these two files is in the same folder as the lisp code.
 
 * If you have known the name of your device/emulator, please configure the variable:
 
-    (customize-variable 'android-device)   or
-    (set-default android-device "the name of your device/emulator")
+     (customize-variable 'android-device)   or
+     (set-default android-device "the name of your device/emulator")
 
 # Default key bindings
  - Default key bindings are:
