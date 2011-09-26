@@ -155,8 +155,9 @@
   (interactive)
   (let* ((all-tools '(ant cmake make))
          (tools-excluding (delq android-build-tool all-tools))
-         (build-tool (completing-read "Build tool: " all-tools nil t
-                                      (car tools-excluding) nil (car tools-excluding))))
+         (build-tool (completing-read "Build tool: " (mapcar 'symbol-name all-tools) nil t
+                                      (symbol-name (car tools-excluding))
+                                      nil (symbol-name (car tools-excluding)))))
     (android-switch-build-tool build-tool)))
 
 (defun android-project-create-1 (type args n)
