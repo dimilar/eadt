@@ -553,7 +553,8 @@ Target: \\(.*\\) (API level \\([0-9]+?\\))" nil t)
 
 ;;;###autoload
 (defun android-targets-reload ()
-  ""
+  "If new targets are added, reset the variable `android-targets-available-alist'
+, `android-targets-all-alist' and `android-targets-list'"
   (interactive)
   (setq android-targets-all-alist nil
         android-targets-available-alist nil

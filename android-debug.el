@@ -125,7 +125,6 @@ otherwise return a positive number (error code)."
        (android-get-tool-path "adb") nil nil nil
        (format " forward tcp:%s %s:%s" local-port protocol remote-port)))))
 
-;;;###autoload
 (defun android-activity-jdb-debug ()
   " Function to debug the activity using jdb. steps:
 1. forward a remote port to a local port
@@ -164,7 +163,6 @@ Please kill the existent process of the package to be debugged."
            (format "%s %s shell am start -n %s" adb-tool-path device-arg (car classes))))
       (error "Failed to forward the port"))))
 
-;;;###autoload
 (defun android-jni-gdb-debug ()
   "Function to debug the jni library. Please refer the script ndk-debug."
   (interactive)
@@ -229,7 +227,6 @@ Please kill the existent process of the package to be debugged."
     ;; (error (format "package: %s is not running" package-name)
     ))
 
-;;;###autoload
 (defun android-native-gdb-debug ()
   "Function to debug the native program. Steps:
 1. if there is no gdbserver available on your device or emulator, copy one

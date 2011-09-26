@@ -31,7 +31,8 @@
 ;; 
 ;;; Code:
 
-(require 'android)
+;; (require 'android)
+(require 'android-debug)
 
 (defcustom android-cmake-toolchain-file "/zleinter/emax/android/android.toolchain.cmake"
   ""
