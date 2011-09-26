@@ -47,6 +47,12 @@ by calling `android-set-tool-path'. Once one tool's path is set,
 as you call the function `android-get-tool-path', the path will
  be returned.")
 
+(defvar android-ndk-system
+  (cond ((eq system-type "windows-nt") "windows")
+        ((eq system-type "gnu/linux") "linux-x86")
+        ((eq system-type "darwin") "")
+        (t "linux-x86")))
+
 (defcustom android-environment-variables 
  '(("ANDROID_SDK" "/opt/android-sdk" "")
    ("ANDROID_SDK_TOOLS" "/opt/android-sdk/tools" "android ddms emulator")

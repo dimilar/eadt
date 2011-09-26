@@ -31,6 +31,11 @@
 ;; 
 ;;; Code:
 
+(require 'android-gen)
+
+(defmacro string-trim (string)
+  ""
+  `(replace-regexp-in-string "\\(^[ \t]*\\|[ \t]*$\\)" "" ,string))
 
 (defconst android-project-management-type
   '((("create" . "project") (target name path activity package build-tool))
@@ -129,6 +134,7 @@
    (save-excursion
      (android-gen-file ,file-path ,gen-fun ,var))))
 
+;;;###autoload
 (defun android-project-gen-cmakelists ()
   (interactive)
   (let* ((project-root (get (intern android-file-name android-file-prop-obarray) 'project-root))
@@ -144,6 +150,7 @@
      (list (cons 'android-project-name project-name)
            (cons 'android-target target)))))
 
+;;;###autoload
 (defun android-project-switch-build-tool ()
   (interactive)
   (let* ((all-tools '(ant cmake make))
@@ -276,36 +283,42 @@
         (funcall 'android-project-create-1 type args n)
     (funcall 'android-project-create type args n))))
 
+;;;###autoload
 (defun android-project-new (args)
   ""
   (interactive (android-project-interactive-form 
                 (nth 1 (nth 0 android-project-management-type))))
   (android-project-command args 0))
 
+;;;###autoload
 (defun android-project-update-proj (args)
   ""
   (interactive (android-project-interactive-form
                 (nth 1 (nth 1 android-project-management-type))))
   (android-project-command args 1))
 
+;;;###autoload
 (defun android-project-new-libproj (args)
   ""
   (interactive (android-project-interactive-form
                 (nth 1 (nth 2 android-project-management-type))))
   (android-project-command args 2))
 
+;;;###autoload
 (defun android-project-update-libproj (args)
   ""
   (interactive (android-project-interactive-form
                 (nth 1 (nth 3 android-project-management-type))))
   (android-project-command args 3))
 
+;;;###autoload
 (defun android-project-ref-libproj (args)
   ""
   (interactive (android-project-interactive-form
                 (nth 1 (nth 4 android-project-management-type))))
   (android-project-command args 4))
 
+;;;###autoload
 (defun android-project-new-native (args)
   ""
   (interactive (android-project-interactive-form 

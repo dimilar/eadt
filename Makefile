@@ -26,16 +26,17 @@ LISPF      = 	android.el			\
 		android-init.el		\
 		android-launch.el		\
 		android-project.el		\
-		android-target.el		\
-		android-tools.el		\
+		android-tools.el		
 
+#		android-target.el		\
 .SUFFIXES: .el .elc .texi
 SHELL = /bin/sh
 
 # Additional distribution files
 DISTFILES_extra=  Makefile request-assign-future.txt contrib
 
-ELCFILES=$(LISPF:.el=.elc)
+LISPFILES = $(LISPF) android-autoloads.el
+ELCFILES=$(LISPFILES:.el=.elc)
 
 all:	$(ELCFILES)
 
@@ -49,20 +50,20 @@ update:
 	${MAKE} clean
 	${MAKE} all
 clean:
-	@rm -f *.elc
+	@rm -f *.elc android-autoloads.el
 
 compile: $(ELCFILES)
 
 install: install-lisp
 
-autoloads: android-autolaod.el
+autoloads: android-autoloads.el
 
-android-autoload.el: $(LISPFILES0) Makefile
+android-autoloads.el: $(LISPF) Makefile
 	$(BATCH) --eval "(require 'autoload)" \
-		--eval '(find-file "android-autoload.el")'  \
+		--eval '(find-file "android-autoloads.el")'  \
 		--eval '(erase-buffer)' \
 		--eval '(mapc (lambda (x) (generate-file-autoloads (symbol-name x))) (quote ($(LISPF))))' \
-		--eval '(insert "\n(provide (quote android-autoload))\n")' \
+		--eval '(insert "\n(provide (quote android-autoloads))\n")' \
 		--eval '(save-buffer)'
 
 # Dependencies
@@ -73,9 +74,9 @@ android-init.elc:	android.el
 android-command.elc:	android.el
 android-debug.elc:	android.el
 android-launch.elc:	android.el
-android-target.elc:	android.el
 android-project.elc:	android.el
 android-gen.elc:	android.el
+# android-target.elc:	android.el
 
 
 .el.elc:

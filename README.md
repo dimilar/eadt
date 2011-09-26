@@ -2,7 +2,7 @@
 ## put the two lines below in your ```.emacs```:
 
     (add-to-list 'load-path "/path/to/eadt")
-    (require 'android)
+    (require 'android-autoloads)
 
 ## Ensure the following variables are configured:
 

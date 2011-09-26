@@ -31,7 +31,15 @@
 ;; 
 ;;; Code:
 
+(require 'android)
 
+(defcustom android-cmake-toolchain-file "/zleinter/emax/android/android.toolchain.cmake"
+  ""
+  :group 'android-mode
+  :type 'string
+  )
+
+;;;###autoload
 (defun android-ant-command (task &optional args)
   "The interface to run command \"ant compile|install|uninstall\""
   (when android-file-name
@@ -42,6 +50,7 @@
       (compile (concat (android-get-tool-path "ant") device-arg " " task)))))
 
 ;; TODO
+;;;###autoload
 (defun android-ndk-command (task &optional args)
   "The interface to run command \"ndk-build\""
   (when android-file-name
@@ -49,6 +58,7 @@
           (local-task (if (string= task "compile") "" task)))
       (compile (concat (android-get-tool-path "ndk-build") " " local-task)))))
 
+;;;###autoload
 (defun android-cmake-command (task &optional args)
   "The interface to run command \"cmake ../ & make install|uninstall|run|compile...\""
   (when android-file-name
@@ -67,6 +77,7 @@
       (call-process-shell-command (android-get-tool-path "cmake") nil nil nil cmake-command)
       (compile make-command))))
 
+;;;###autoload
 (defun android-make-command (&optional task args)
   "The interface to run command \"make install|uninstall|run|compile...\""
   (when android-file-name
@@ -76,6 +87,7 @@
           (device-arg (when device (format " DEVICE=%s " device))))
       (compile (concat "make " device-arg (or task nil))))))
 
+;;;###autoload
 (defun android-debug-command (task &optional args)
   "The interface to run debug command"
   (when android-file-name
@@ -83,11 +95,19 @@
             (get (intern android-file-name android-file-prop-obarray) 'project-root)))
       (funcall (symbol-function (intern (concat "android-" task "-debug")))))))
 
+;;;###autoload
 (defun android-command (task)
   ""
   (let ((build-function
          (symbol-function (intern (concat "android-" (symbol-name android-build-tool) "-" task)))))
     (apply build-function nil)))
+
+(defsubst android-launch-activity (device-arg class)
+  ""
+  (let ((adb-tool-path (android-get-tool-path "adb"))
+        (command-arg (format " %s shell am start -n %s/.%s" device-arg (car class) (cdr class))))
+    (call-process-shell-command adb-tool-path nil nil nil command-arg)))
+
 
 (defsubst android-run-activity ()
   "Function to launch activity from your device or emulator."
@@ -97,8 +117,32 @@
            (device (android-get-current-device))
            (device-arg (if device (format " -s %s " device) "")))
       (android-launch-activity device-arg
-       (list (get file-sym 'package)
+       (cons (get file-sym 'package)
              (get file-sym 'android:name))))))
+
+;;;###autoload
+(defun android-adb-device-command (command)
+  "Connect device or emulator through the internet"
+  (let* ((host (completing-read "Host[:port]: " nil))
+        (out
+         (substring
+          (shell-command-to-string 
+           (format "%s %s %s"
+                   (android-get-tool-path "adb")
+                   command host)) 0 -1)))
+    (android-get-devices)
+    ;; if android-device is nil, it indicats before the
+    ;; android-device-alist is nil, too. if sucessfully
+    ;; connected, try to update the device of the current
+    ;; project. While if the command is "disconnect", it
+    ;; is too complicated to synchronize everything.
+    (if (and (string= command "connect")
+             (not android-device)
+             android-devices-alist)
+        (android-switch-device
+         (car (car android-devices-alist)))
+      (android-refresh-device-menu))
+    (message out)))
 
 
 (defalias 'android-ant-compile #'(lambda () (android-ant-command "compile")))
@@ -119,18 +163,28 @@
 (defalias 'android-make-run #'(lambda () (android-make-command "run")))
 (defalias 'android-make-clean #'(lambda () (android-make-command "clean")))
 
+;;;###autoload
 (defalias 'android-ndk-compile #'(lambda () (interactive) (android-ndk-command "compile")))
 
+;;;###autoload
 (defalias 'android-compile #'(lambda () (interactive) (android-command "compile")))
+;;;###autoload
 (defalias 'android-install #'(lambda () (interactive) (android-command "install")))
+;;;###autoload
 (defalias 'android-uninstall #'(lambda () (interactive) (android-command "uninstall")))
+;;;###autoload
 (defalias 'android-run #'(lambda () (interactive) (android-command "run")))
+;;;###autoload
 (defalias 'android-clean #'(lambda () (interactive) (android-command "clean")))
+;;;###autoload
 (defalias 'android-debug-activity #'(lambda () (interactive) (android-debug-command "activity-jdb")))
+;;;###autoload
 (defalias 'android-debug-jni #'(lambda () (interactive) (android-debug-command "jni-gdb")))
+;;;###autoload
 (defalias 'android-debug-native #'(lambda () (interactive) (android-debug-command "native-gdb")))
-
+;;;###autoload
 (defalias 'android-adb-device-connect #'(lambda () (interactive) (android-adb-device-command "connect")))
 
+;;;###autoload
 (defalias 'android-adb-device-disconnect #'(lambda () (interactive) (android-adb-device-command "disconnect")))
 (provide 'android-command)

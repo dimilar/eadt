@@ -33,7 +33,7 @@
 ;; 
 ;;; Code:
 
-
+(require 'android)
 
 (defcustom android-sdk-jdb-port "29882"
   "default port supplied to `android-activity-jdb-debug'"

@@ -30,9 +30,33 @@
 ;; Author: Shulei Zhu
 ;; 
 ;;; Code:
+;; (require 'android)
+
+(eval-when-compile (require 'cl))
+(require 'xml)
+(require 'easymenu)
+(require 'android-tools)
+
+
+(defvar android-file-name nil)
+(make-variable-buffer-local 'android-file-name)
+
+(defvar android-mode-string nil "")
+(make-variable-buffer-local 'android-mode-string)
+
+(defcustom android-build-tool 'ant
+  ""
+  :group 'android-mode
+  :type '(string
+	  (radio-button-choice
+	  (item 'ant)
+	  (item 'cmake)
+	  (item 'make))))
+(make-variable-buffer-local 'android-build-tool)
 
 (defvar android-project-prop-obarray (make-vector 10 0)
   "Obarray for per-project properites")
+
 (defvar android-file-prop-obarray (make-vector 20 0)
   "Obarray for per-file properties")
 
@@ -62,6 +86,114 @@ select one from the menu. Note it is a buffer local variable."
 or in your network environment. Each element consists of a device (CAR)
 and its state (CDR): offline|device|bootloader.")
 
+
+(defvar android-minor-mode-menu nil)
+(defun android-minor-keymap ()
+  (let ((keymap (make-sparse-keymap)))
+    (easy-menu-define android-minor-mode-menu
+      keymap
+      "Menu used when Android-minor-mode is active."
+      `("Android"
+        "----"
+        ("Project"
+         ["New Android Project" android-project-new
+          :help "Create a new android project using the \"android\" tool"]
+         ["New Native Project" android-project-new-native
+          :help "Create a native c/c++ project without android"]
+         ["Update Android Project" android-project-update-proj
+          :help "Upgrading a project from an older Android SDK, or from existing code"]
+         ["Setup Libary Project" android-project-new-libproj
+          :help "Creat a new library project using the \"android\" tool"]
+         ["Reference Libary Project" android-project-update-libproj
+          :help "Update the build properties of the library project"]
+         ["Update Libary Project" android-project-ref-libproj
+          :help "Add a reference to the library project"]
+         )
+        "----"
+        ["NDK Build" android-ndk-compile
+         :help "Generate and copy the libraries needed by your application to the proper location"
+         :active t
+         ]
+        "----"
+        ["Build" android-compile
+         :help "Compile the source code of the project"
+         :active (android-get-command-enable-state 'compile)]
+        ["Install" android-install
+         :help "Install the binary program or apk to your device/emulator"
+         :active (android-get-command-enable-state 'install)]
+        ["Run" android-run
+         :active (android-get-command-enable-state 'run)         
+         :help "Run the program or package on the device/emulator"]
+        ["Clean " android-clean
+         :active (android-get-command-enable-state 'clean)         
+         :help "Get rid of all the objects files, executables or apk"]        
+        ["Uinstall" android-uninstall
+         :active (android-get-command-enable-state 'uninstall)         
+         :help "Remove the binary program or apk from your emulator"]        
+        "----"
+        ["Debug Activity" android-debug-activity
+         :active (android-get-command-enable-state 'debug-activity)
+         :help "Call the jdb to debug the Android activity "]
+        ["Debug Jni" android-debug-jni
+         :active (android-get-command-enable-state 'debug-jni)
+         :help "Remotely debug the Java Native Interface with gdb"]
+        ["Debug Native Program" android-debug-native
+         :active (android-get-command-enable-state 'debug-native)
+         :help "Debug the binary program of the native project"]
+        "----"
+        ("Switch Build Tool"
+         ["Ant" (android-switch-build-tool "ant")
+          :help "Use the \"ant\" as build tool"
+          :active t :style radio :selected (eq android-build-tool 'ant)
+          ]
+         ["Cmake" (android-switch-build-tool "cmake")
+          :help "Manage the project using \"cmake\", but still need call \"ant\" to build the project"
+          :active t :style radio :selected (eq android-build-tool 'cmake)
+          ]
+         ["Make" (android-switch-build-tool "make")
+          :help "Manage the native project using \"make\" "
+          :active t :style radio :selected (eq android-build-tool 'make)
+          ]
+         )
+        ;("Switch Native Project Type"
+        ; ["C" (setq-default android-native-project-type "c")
+        ;  :help "C program"
+        ;  :active t :style radio :selected (string= android-native-project-type "c")
+        ;  ]
+        ; ["C++" (setq-default android-native-project-type "c++")
+        ;  :help "C++ program"
+        ;  :active t :style radio :selected (string= android-native-project-type "c++")
+        ;  ])
+        "----"
+        ["Start Logcat" android-logcat
+         :help "Launch the Android logging system"]
+        ["Start Emulator" android-launch-emulator
+         :help "Start the emulator with some Android Virtual Device"]
+        ["Start DDMS" android-launch-ddms
+         :help "Start the debugging tool DDMS (the Dalvik Debug Monitor Server)"]
+        ["Reload targets" android-targets-reload
+         :help "If some new targets was created, list them"]))
+    (define-key keymap (read-kbd-macro "C-c C-c b") 'android-compile)    
+    (define-key keymap (read-kbd-macro "C-c C-c c") 'android-clean)            
+    (define-key keymap (read-kbd-macro "C-c C-c i") 'android-install)
+    (define-key keymap (read-kbd-macro "C-c C-c u") 'android-uninstall)
+    (define-key keymap (read-kbd-macro "C-c C-c l") 'android-logcat)
+    (define-key keymap (read-kbd-macro "C-c C-c n") 'android-ndk-compile)
+    (define-key keymap (read-kbd-macro "C-c C-c r") 'android-run)
+    (define-key keymap (read-kbd-macro "C-c C-c d a") 'android-debug-activity)
+    (define-key keymap (read-kbd-macro "C-c C-c d j") 'android-debug-jni)
+    (define-key keymap (read-kbd-macro "C-c C-c d n") 'android-debug-native)
+    (define-key keymap (read-kbd-macro "C-c C-c D") 'android-start-ddms)
+    (define-key keymap (read-kbd-macro "C-c C-c e") 'android-start-emulator)    
+    (define-key keymap (read-kbd-macro "C-c C-c p a") 'android-project-new)      
+    (define-key keymap (read-kbd-macro "C-c C-c p n") 'android-project-new-native)      
+    (define-key keymap (read-kbd-macro "C-c C-c p u") 'android-project-update-proj)   
+    (define-key keymap (read-kbd-macro "C-c C-c p l") 'android-project-new-libproj)   
+    (define-key keymap (read-kbd-macro "C-c C-c p r") 'android-project-ref-libproj)   
+    (define-key keymap (read-kbd-macro "C-c C-c p U") 'android-project-update-libproj)
+    (define-key keymap (read-kbd-macro "C-c C-c s t") 'android-project-switch-build-tool)
+    keymap))
+
 (defun android-get-devices()
   "A function used to fetch all devices available on your machine or around it
 by applying the command `adb devices'. The result is stored in the
@@ -80,6 +212,8 @@ android-devices-alist"
       (setq start (match-end 2)))))
 
 (defun android-get-current-device ()
+  "Get the device which is associated with the current buffer, if the buffer belongs to some android project,
+and a device is activated, retrun the device name, otherwise return nil."
   (let ((device (get (intern android-file-name android-file-prop-obarray) 'device)))
     (when (and device (assoc (car device) android-devices-alist))
       (when (and (not (string= (cdr device) "device"))
@@ -96,104 +230,6 @@ the state obtained by executing `adb -s YOUR-DEVICE-NAME  get-state' is:
   (substring (shell-command-to-string
               (format "%s -s %s get-state"
                       (android-get-tool-path "adb") android-device)) 0 -1))
-
-(defun android-switch-device(device)
-  "If multiple devices exist, when clicking the corresponding menu item,
-set the properity :DEVICE of the current file and the project which this file belongs to,
-as well as of all open files under the same project. In the end, redraw the device menu."
-  (let (buf (device-cons (cons device (android-get-device-state)))
-            (project-root (get (intern android-file-name android-file-prop-obarray)
-                               'project-root)))
-    (unless (string= device android-device)
-      (loop for sym across android-file-prop-obarray
-            do
-            (when (and (symbolp sym)
-                     (get sym 'project-root)
-                     (string= (get sym 'project-root)
-                              project-root)
-                     (setq buf (get-file-buffer (symbol-name sym))))
-              (with-current-buffer buf
-                (setq android-device device)
-                (put sym 'device device-cons))))
-      (android-project-prop-reset
-       project-root (list (cons 'device device-cons))))
-    (android-refresh-device-menu)))
-
-(defun android-adb-device-command (command)
-  "Connect device or emulator through the internet"
-  (let* ((host (completing-read "Host[:port]: " nil))
-        (out
-         (substring
-          (shell-command-to-string 
-           (format "%s %s %s"
-                   (android-get-tool-path "adb")
-                   command host)) 0 -1)))
-    (android-get-devices)
-    ;; if android-device is nil, it indicats before the
-    ;; android-device-alist is nil, too. if sucessfully
-    ;; connected, try to update the device of the current
-    ;; project. While if the command is "disconnect", it
-    ;; is too complicated to synchronize everything.
-    (if (and (string= command "connect")
-             (not android-device)
-             android-devices-alist)
-        (android-switch-device
-         (car (car android-devices-alist)))
-      (android-refresh-device-menu))
-    (message out)))
-
-(defvar android-command-type
-  '(compile install uninstall
-    clean recompile run debug-activity debug-jni debug-native)
-  "some commands executed by clicking the menu item. This varibale
-is used to control the enabilities of these commands on the menu")
-
-(defsubst android-get-command-enable-state (command)
-  "inline function to get the enability of the COMMAND"
-  (cdr (assq command
-             (get (intern android-file-name android-file-prop-obarray)
-                  'command-enable))))
-
-(defun android-set-command-visibility (tool-sym)
-  "thisandthat."
-  (let ((command-enability (mapcar #'(lambda (x) (cons x t)) android-command-type)))
-    (cond ((eq tool-sym 'ant)
-         ;; (aset command-enable-list 5 nil)
-         (setcdr (assq 'debug-native  command-enability) nil))
-        ;; ((string= tool "cmake")
-        ;;  (aset command-enable-list 5 nil))
-        ((eq tool-sym 'make)
-         (setcdr (assq 'debug-activity  command-enability) nil)
-         (setcdr (assq 'debug-jni command-enability) nil)))
-  command-enability))
-
-(defun android-switch-build-tool (tool)
-  "When switching to another building tool (on of ant, cmake and make ...)
-modify the property :build-tool of the current file and the project which this file belongs to,
-as well as of all open files under the same project. Furthermore, it is required to
-update the mode string and show the current build tool."
-  (let* (buf
-         (tool-sym (intern tool))
-         (command-enability (android-set-command-visibility tool-sym))
-        (project-root (get (intern android-file-name android-file-prop-obarray) 'project-root)))
-    (if (eq tool-sym android-build-tool)
-        (android-set-mode-string)
-      (loop for sym across android-file-prop-obarray
-            do (when (and
-                      (symbolp sym)
-                      (get sym 'build-tool)
-                      (string= (get sym 'project-root) project-root)
-                      (setq buf (get-file-buffer (symbol-name sym))))
-                 (with-current-buffer buf
-                   (setq android-build-tool tool-sym)
-                   (put sym 'build-tool tool)
-                   (put sym 'command-enable command-enability)
-                   (android-set-mode-string))))
-      (android-project-prop-reset
-       project-root
-       (list (cons 'build-tool tool)
-             (cons 'command-enable command-enability))))))
-
 
 (defun android-refresh-device-menu ()
   "each project has its own device menu whose visibility is determined by
@@ -222,6 +258,90 @@ the project root of the current buffer."
     (when android-devices-alist
       (define-key android-minor-mode-menu [separator-devices]
         '(menu-item "--")))))
+
+(defun android-switch-device(device)
+  "If multiple devices exist, when clicking the corresponding menu item,
+set the properity :DEVICE of the current file and the project which this file belongs to,
+as well as of all open files under the same project. In the end, redraw the device menu."
+  (let (buf (device-cons (cons device (android-get-device-state)))
+            (project-root (get (intern android-file-name android-file-prop-obarray)
+                               'project-root)))
+    (unless (string= device android-device)
+      (loop for sym across android-file-prop-obarray
+            do
+            (when (and (symbolp sym)
+                     (get sym 'project-root)
+                     (string= (get sym 'project-root)
+                              project-root)
+                     (setq buf (get-file-buffer (symbol-name sym))))
+              (with-current-buffer buf
+                (setq android-device device)
+                (put sym 'device device-cons))))
+      (android-project-prop-reset
+       project-root (list (cons 'device device-cons))))
+    (android-refresh-device-menu)))
+
+
+(defvar android-command-type
+  '(compile install uninstall
+    clean recompile run debug-activity debug-jni debug-native)
+  "some commands executed by clicking the menu item. This varibale
+is used to control the enabilities of these commands on the menu")
+
+(defsubst android-get-command-enable-state (command)
+  "inline function to get the enability of the COMMAND"
+  (cdr (assq command
+             (get (intern android-file-name android-file-prop-obarray)
+                  'command-enable))))
+
+(defun android-set-command-visibility (tool-sym)
+  "thisandthat."
+  (let ((command-enability (mapcar #'(lambda (x) (cons x t)) android-command-type)))
+    (cond ((eq tool-sym 'ant)
+         ;; (aset command-enable-list 5 nil)
+         (setcdr (assq 'debug-native  command-enability) nil))
+        ;; ((string= tool "cmake")
+        ;;  (aset command-enable-list 5 nil))
+        ((eq tool-sym 'make)
+         (setcdr (assq 'debug-activity  command-enability) nil)
+         (setcdr (assq 'debug-jni command-enability) nil)))
+  command-enability))
+
+(defsubst android-set-mode-string ()
+  "Set the mode string of the android minor mode. The string consists of
+\"Android\" and the name of the build tool. Note the latter is buffer local varaible"
+  (unless (or (member 'android-mode-string global-mode-string)
+                 (string= 'jde-mode "jde-mode"))
+       (setq global-mode-string (append global-mode-string
+                                        (list 'android-mode-string))))
+     (setq android-mode-string (format " Android(%s)"  (symbol-name android-build-tool))))
+
+(defun android-switch-build-tool (tool)
+  "When switching to another building tool (on of ant, cmake and make ...)
+modify the property :build-tool of the current file and the project which this file belongs to,
+as well as of all open files under the same project. Furthermore, it is required to
+update the mode string and show the current build tool."
+  (let* (buf
+         (tool-sym (intern tool))
+         (command-enability (android-set-command-visibility tool-sym))
+        (project-root (get (intern android-file-name android-file-prop-obarray) 'project-root)))
+    (if (eq tool-sym android-build-tool)
+        (android-set-mode-string)
+      (loop for sym across android-file-prop-obarray
+            do (when (and
+                      (symbolp sym)
+                      (get sym 'build-tool)
+                      (string= (get sym 'project-root) project-root)
+                      (setq buf (get-file-buffer (symbol-name sym))))
+                 (with-current-buffer buf
+                   (setq android-build-tool tool-sym)
+                   (put sym 'build-tool tool)
+                   (put sym 'command-enable command-enability)
+                   (android-set-mode-string))))
+      (android-project-prop-reset
+       project-root
+       (list (cons 'build-tool tool)
+             (cons 'command-enable command-enability))))))
 
 (defcustom android-armeabi (list "armeabi-v7a with NEON")
   "Type of floating point support, please use
@@ -346,6 +466,10 @@ the project root is stored in android-project-prop-obarray."
   (setplist (intern file android-file-prop-obarray) nil))
 
 
+(defun android-find-root (file)
+  ""
+  (locate-dominating-file file "AndroidManifest.xml"))
+
 (defun android-file-set-prop (file)
   "Determine the project which the file belongs to, then copy
 the symbol-plist of the project as the properties of the file."
@@ -358,16 +482,6 @@ the symbol-plist of the project as the properties of the file."
       (setplist (intern file android-file-prop-obarray)
                 (symbol-plist project-sym)))))
 
-(defsubst android-set-mode-string ()
-  "Set the mode string of the android minor mode. The string consists of
-\"Android\" and the name of the build tool. Note the latter is buffer local varaible"
-  (unless (or (member 'android-mode-string global-mode-string)
-                 (string= 'jde-mode "jde-mode"))
-       (setq global-mode-string (append global-mode-string
-                                        (list 'android-mode-string))))
-     (setq android-mode-string (format " Android(%s)"  (symbol-name android-build-tool))))
-
-
 (defun android-project-prop-reset (project-root prop-list)
   "If one or more properties of the project were changed, set it to the new one(s).
 Usually, it is also necessary to modify the corresponding proerties of all open files under this project."
@@ -379,20 +493,71 @@ Usually, it is also necessary to modify the corresponding proerties of all open 
       ;; (setq proj-root (get (intern file-name android-file-prop-obarray) 'project-root))
       (put (intern project-root android-project-prop-obarray) sym value))))
 
-(defun android-find-file-hook ()
-  "Function for `find-file-hook' activating android minor mode mode if appropriate."
-  (when android-mode
-    (android-mode nil))
-  (if buffer-file-name
-      (setq android-file-name buffer-file-name)
-    (setq android-file-name default-directory))
-  (when android-file-name
-    (android-file-clear-prop android-file-name)
-    (when (android-file-set-prop android-file-name)
-      (android-switch-build-tool
-       (get (intern android-file-name android-file-prop-obarray) 'build-tool))
-      (android-switch-device (car (get (intern android-file-name android-file-prop-obarray) 'device)))
-      ;; (android-refresh-device-menu)
-      (android-mode t))))
+
+(defvar android-target "android-8")
+(make-variable-buffer-local 'android-target)
+
+
+(defvar android-targets-all-alist '())
+(defvar android-targets-available-alist '())
+(defvar android-targets-list '())
+;; (setq android-targets-available-alist nil)
+;; (setq android-targets-all-alist nil)
+(defun android-get-targets-list()
+  (let (target-string)
+    (unless android-targets-all-alist (android-list-targets))
+    (when android-targets-all-alist
+      (dolist (target android-targets-all-alist)
+        (setq target-string (concat (get target 'id) ": " (get target 'alias) " <" (get target 'name) ">"))
+        (unless (member target-string android-targets-list)
+          (dolist (available-target android-targets-available-alist)
+            (when (and (string= (get target 'api-level) (get available-target 'api-level))
+                       (string= (get target 'name) (get available-target 'target)))
+              (push target-string android-targets-list)))
+          (setq android-targets-list (append android-targets-list (list target-string))))))
+    android-targets-list))
+
+(defun android-list-targets ()
+  (let ((buffer "*android list targets*")
+       target available-targets (available-count 0))
+    (call-process-shell-command
+     (android-get-tool-path "android")
+     nil buffer nil "list")
+    (save-excursion
+      (save-window-excursion
+        (with-current-buffer buffer
+          (goto-char (point-min))
+          (while (re-search-forward
+                  "id: \\([0-9]+?\\) or \\\"\\(.*?\\)\\\"\n +?Name:\
+ \\(.*?\\)\n +?Type: \\(.*?\\)\n\\( +?Vendor: .*?\n +?Revision: .*?\n\
+ +?Description: .*\n +?Based on .* \\| +?API level: \\)\\([0-9]\\{1,2\\}\\).*" nil t)
+            (setq target (intern (concat "target-" (match-string 1))))
+            (unless (memq target android-targets-all-alist)
+              (push target android-targets-all-alist)
+              (setplist target nil)
+              (put target 'id (match-string 1))
+              (put target 'alias (match-string 2))
+              (put target 'name (match-string 3))
+              (put target 'type (match-string 4))
+              (put target 'api-level (match-string 6))))
+          (while (re-search-forward
+                  "Available Android Virtual Devices:\n +?Name: \\(.*?\\)\n.*\n +?\
+Target: \\(.*\\) (API level \\([0-9]+?\\))" nil t)
+            (setq target (intern (concat "avd-" (number-to-string (1+ available-count)))))
+            (unless (memq target android-targets-available-alist)
+              (push target android-targets-available-alist)
+              (put target 'name (match-string 1))
+              (put target 'target (match-string 2))
+              (put target 'api-level (match-string 3))))
+          (kill-buffer buffer))))))
+
+;;;###autoload
+(defun android-targets-reload ()
+  ""
+  (interactive)
+  (setq android-targets-all-alist nil
+        android-targets-available-alist nil
+        android-targets-list nil)
+  (android-list-targets))
 
 (provide 'android-init)

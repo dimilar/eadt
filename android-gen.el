@@ -31,7 +31,7 @@
 ;; 
 ;;; Code:
 
-
+(require 'android)
 
 (defcustom android-force-arm nil
   ""
@@ -39,12 +39,6 @@
   :type '(const :tag "force arm or not"))
 
 (defcustom android-cmake-include-file "/zleinter/emax/android/android.cmake"
-  ""
-  :group 'android-mode
-  :type 'string
-  )
-
-(defcustom android-cmake-toolchain-file "/zleinter/emax/android/android.toolchain.cmake"
   ""
   :group 'android-mode
   :type 'string

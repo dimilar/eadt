@@ -28,6 +28,7 @@
 
 ;;; Code:
 
+(require 'android)
 (defvar android-mode-log-face-alist
   '(("V" . android-mode-verbose-face)
     ("D" . android-mode-debug-face)
@@ -73,6 +74,7 @@
        (setq android-exclusive-processes (cons (intern name)
                                                android-exclusive-processes))))
 
+;;;###autoload
 (defun android-logcat-find-file ()
   (interactive)
   (let ((filename (get-text-property (point) 'filename))
@@ -83,6 +85,7 @@
       ;; (goto-line linenr)
       (goto-char (point-min)) (forward-line (1- linenr)))))
 
+;;;###autoload
 (defun android-logcat-find-file-mouse (event)
   (interactive "e")
   (let (window pos file)
@@ -167,6 +170,7 @@
         (setq android-logcat-pending-output (substring output pos)))
       (when following (goto-char (point-max))))))
 
+;;;###autoload
 (defun android-logcat ()
   "Switch to ADB logcat buffer, create it when it doesn't exists yet."
   (interactive)
@@ -184,6 +188,7 @@
   (switch-to-buffer android-logcat-buffer)
   (goto-char (point-max)))
 
+;;;###autoload
 (defun android-launch-emulator ()
   "start emulator"
   (interactive)
@@ -197,6 +202,7 @@
              (concat (android-get-tool-path "emulator") " -avd " avd)
              (message (concat "emulator " avd " already running"))))))
 
+;;;###autoload
 (defun android-launch-ddms ()
   "Launch Dalvik Debug Monitor Service tool."
   (interactive)
