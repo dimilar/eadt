@@ -1,2 +1,2 @@
 *.elc
-android-autoloads.el
+android-autoloads.el*
