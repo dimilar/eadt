@@ -139,6 +139,7 @@
     ;; is too complicated to synchronize everything.
     (if (and (string= command "connect")
              (not android-device)
+             (get (intern android-file-name android-file-prop-obarray) 'project-root)
              android-devices-alist)
         (android-switch-device
          (car (car android-devices-alist)))
