@@ -4,7 +4,7 @@
 ;; 
 ;; Author: Shulei Zhu <schuleichu@gmail.com>
 ;; Keywords: android-mode
-;; Package: android
+;; Package: eadt
 ;; 
 ;; This file is part of GNU Emacs.
 ;; 
