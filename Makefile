@@ -28,7 +28,6 @@ LISPF      = 	android.el			\
 		android-project.el		\
 		android-tools.el		
 
-#		android-target.el		\
 .SUFFIXES: .el .elc .texi
 SHELL = /bin/sh
 
@@ -41,9 +40,6 @@ ELCFILES=$(LISPFILES:.el=.elc)
 all:	$(ELCFILES)
 
 default: $(ELCFILES)
-
-up2:	update
-	sudo ${MAKE} install
 
 update:
 	git pull
@@ -69,13 +65,13 @@ android-autoloads.el: $(LISPF) Makefile
 # Dependencies
 
 android.elc:	android.el
-android-tools.elc:	android.el
-android-init.elc:	android.el
-android-command.elc:	android.el
-android-debug.elc:	android.el
-android-launch.elc:	android.el
-android-project.elc:	android.el
-android-gen.elc:	android.el
+android-tools.elc:	android-tools.el
+android-init.elc:	android.el android-tools.el android-init.el
+android-command.elc:	android-debug.el android-command.el
+android-debug.elc:	android.el android-debug.el
+android-launch.elc:	android.el android-launch.el
+android-project.elc:	android-project.el android-gen.el
+android-gen.elc:	android.el android-gen.el
 # android-target.elc:	android.el
 
 
