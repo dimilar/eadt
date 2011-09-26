@@ -1,6 +1,11 @@
 # Installation
-## put the two lines below in your ```.emacs```:
+## Clone the code from the repository
+    git clone git@github.com:dimilar/eadt.git /path/to/eadt
 
+## Compile the code
+    cd /path/to/eadt & make
+
+## put the two lines below in your ```.emacs```:
     (add-to-list 'load-path "/path/to/eadt")
     (require 'android-autoloads)
 

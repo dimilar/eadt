@@ -31,7 +31,6 @@
 ;; 
 ;;; Code:
 
-(defconst android-version "0.0.1")
 (defgroup android-mode nil
   ""
   :prefix "android-mode-"
@@ -65,7 +64,8 @@
   :global nil
   :lighter android-mode-string
   :keymap android-minor-mode-map
-  :require 'android)
+  :require 'android
+  :version "0.0.1")
 
 
 ;; (put 'android-mode 'risky-local-variable t)
