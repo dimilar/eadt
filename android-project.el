@@ -137,7 +137,7 @@
 ;;;###autoload
 (defun android-project-gen-cmakelists ()
   (interactive)
-  (let* ((project-root (get (intern android-file-name android-file-prop-obarray) 'project-root))
+  (let* ((project-root (android-get-file-prop 'project-root))
          (cmakelists (concat project-root "CMakeLists.txt"))
          (project-sym (intern project-root android-project-prop-obarray))
          (target (get project-sym 'target))
@@ -238,7 +238,7 @@
   `(let ((targets-list (or android-targets-list (android-get-targets-list)))
          (tools (list "ant" "cmake" "make"))
          (types (list "c" "c++"))
-         (project-root (when android-file-name (get (intern android-file-name android-file-prop-obarray) 'project-root))))
+         (project-root (when android-file-name (android-get-file-prop 'project-root))))
      (list
       `(,@(list
          (when (memq 'target ,options)

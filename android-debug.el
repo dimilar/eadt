@@ -234,7 +234,7 @@ Please kill the existent process of the package to be debugged."
 3. forward port
 4. run gdb interactively"
   (interactive)
-  (let* ((app (get (intern android-file-name android-file-prop-obarray) 'program))
+  (let* ((app (android-get-file-prop 'program))
          (device (android-get-current-device))
          (device-arg (if device (format " -s %s " device) ""))
          (program

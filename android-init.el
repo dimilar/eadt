@@ -211,10 +211,13 @@ android-devices-alist"
               (append android-devices-alist (list (cons device state)))))
       (setq start (match-end 2)))))
 
+(defmacro android-get-file-prop (prop)
+  `(get (intern android-file-name android-file-prop-obarray) ,prop))
+
 (defun android-get-current-device ()
   "Get the device which is associated with the current buffer, if the buffer belongs to some android project,
 and a device is activated, retrun the device name, otherwise return nil."
-  (let ((device (get (intern android-file-name android-file-prop-obarray) 'device)))
+  (let ((device (android-get-file-prop 'device)))
     (when (and device (assoc (car device) android-devices-alist))
       (when (and (not (string= (cdr device) "device"))
                  (not (string= (cdr device) "error: unknown host service")))
@@ -253,8 +256,7 @@ the project root of the current buffer."
       (define-key android-minor-mode-menu (vector (intern (concat proj-root (car dv))))
         `(menu-item (concat (car ',dv) ": " (cdr ',dv)) (lambda () (interactive) (android-switch-device (car ',dv)))
                     :button (:radio . (string= (car ',dv) ,file-device))
-                    :visible (string= (get (intern android-file-name android-file-prop-obarray)
-                                           'project-root) ',proj-root))))
+                    :visible (string= (android-get-file-prop 'project-root) ',proj-root))))
     (when android-devices-alist
       (define-key android-minor-mode-menu [separator-devices]
         '(menu-item "--")))))
@@ -264,8 +266,7 @@ the project root of the current buffer."
 set the properity :DEVICE of the current file and the project which this file belongs to,
 as well as of all open files under the same project. In the end, redraw the device menu."
   (let (buf (device-cons (cons device (android-get-device-state)))
-            (project-root (get (intern android-file-name android-file-prop-obarray)
-                               'project-root)))
+            (project-root (android-get-file-prop 'project-root)))
     (unless (string= device android-device)
       (loop for sym across android-file-prop-obarray
             do
@@ -291,8 +292,7 @@ is used to control the enabilities of these commands on the menu")
 (defsubst android-get-command-enable-state (command)
   "inline function to get the enability of the COMMAND"
   (cdr (assq command
-             (get (intern android-file-name android-file-prop-obarray)
-                  'command-enable))))
+             (android-get-file-prop 'command-enable))))
 
 (defun android-set-command-visibility (tool-sym)
   "thisandthat."
@@ -324,7 +324,7 @@ update the mode string and show the current build tool."
   (let* (buf
          (tool-sym (intern tool))
          (command-enability (android-set-command-visibility tool-sym))
-        (project-root (get (intern android-file-name android-file-prop-obarray) 'project-root)))
+         (project-root (android-get-file-prop 'project-root)))
     (if (eq tool-sym android-build-tool)
         (android-set-mode-string)
       (loop for sym across android-file-prop-obarray

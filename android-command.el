@@ -55,7 +55,7 @@
 (defun android-ndk-command (task &optional args)
   "The interface to run command \"ndk-build\""
   (when android-file-name
-    (let ((default-directory (get (intern android-file-name android-file-prop-obarray) 'project-root))
+    (let ((default-directory (android-get-file-prop 'project-root))
           (local-task (if (string= task "compile") "" task)))
       (compile (concat (android-get-tool-path "ndk-build") " " local-task)))))
 
@@ -83,7 +83,7 @@
   "The interface to run command \"make install|uninstall|run|compile...\""
   (when android-file-name
     (let* ((default-directory
-            (get (intern android-file-name android-file-prop-obarray) 'project-root))
+            (android-get-file-prop 'project-root))
           (device (android-get-current-device))
           (device-arg (when device (format " DEVICE=%s " device))))
       (compile (concat "make " device-arg (or task nil))))))
@@ -93,7 +93,7 @@
   "The interface to run debug command"
   (when android-file-name
     (let ((default-directory
-            (get (intern android-file-name android-file-prop-obarray) 'project-root)))
+            (android-get-file-prop 'project-root)))
       (funcall (symbol-function (intern (concat "android-" task "-debug")))))))
 
 ;;;###autoload
@@ -125,25 +125,26 @@
 (defun android-adb-device-command (command)
   "Connect device or emulator through the internet"
   (let* ((host (completing-read "Host[:port]: " nil))
-        (out
-         (substring
-          (shell-command-to-string 
-           (format "%s %s %s"
-                   (android-get-tool-path "adb")
-                   command host)) 0 -1)))
+         (out
+          (substring
+           (shell-command-to-string 
+            (format "%s %s %s"
+                    (android-get-tool-path "adb")
+                    command host)) 0 -1)))
     (android-get-devices)
     ;; if android-device is nil, it indicats before the
     ;; android-device-alist is nil, too. if sucessfully
     ;; connected, try to update the device of the current
     ;; project. While if the command is "disconnect", it
     ;; is too complicated to synchronize everything.
-    (if (and (string= command "connect")
-             (not android-device)
-             (get (intern android-file-name android-file-prop-obarray) 'project-root)
-             android-devices-alist)
-        (android-switch-device
-         (car (car android-devices-alist)))
-      (android-refresh-device-menu))
+    (when android-file-name
+      (if (and (string= command "connect")
+               (not android-device)
+               (android-get-file-prop 'project-root)
+               android-devices-alist)
+          (android-switch-device
+           (car (car android-devices-alist)))
+        (android-refresh-device-menu)))
     (message out)))
 
 

@@ -84,8 +84,8 @@
     (android-file-clear-prop android-file-name)
     (when (android-file-set-prop android-file-name)
       (android-switch-build-tool
-       (get (intern android-file-name android-file-prop-obarray) 'build-tool))
-      (android-switch-device (car (get (intern android-file-name android-file-prop-obarray) 'device)))
+       (android-get-file-prop 'build-tool))
+      (android-switch-device (car (android-get-file-prop 'device)))
       ;; (android-refresh-device-menu)
       (android-mode t))))
 
