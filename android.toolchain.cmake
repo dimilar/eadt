@@ -170,8 +170,9 @@ if( EXISTS "${ANDROID_NDK}" )
 
  set( PossibleAndroidLevels "3;4;5;8;9" )
  set( ANDROID_API_LEVEL ${ANDROID_API_LEVEL} CACHE STRING "android API level" )
+ message("API_LEVEL: ${ANDROID_API_LEVEL}")
  set_property( CACHE ANDROID_API_LEVEL PROPERTY STRINGS ${PossibleAndroidLevels} )
- 
+
  if( NOT ANDROID_API_LEVEL GREATER 2 )
   set( ANDROID_API_LEVEL 8)
   message( STATUS "Using default android API level android-${ANDROID_API_LEVEL}" )

@@ -21,6 +21,10 @@ macro(opencv_settings)
   SET (OPENCV_DIR /scratch/programming/android/cmake/opencv/)
   SET (opencv_dependencies opencv_contrib opencv_legacy opencv_objdetect opencv_calib3d opencv_features2d opencv_video opencv_highgui opencv_ml opencv_imgproc opencv_flann opencv_core)
 
+  if (COMMAND COPY_NATIVE_CAMERA_LIBS)
+    COPY_NATIVE_CAMERA_LIBS(${PROJECT_NAME})
+  endif()
+
   IF(WITH_ANDROID_CAMERA AND NOT BUILD_SHARED_LIBS)
     LIST(APPEND OPENCV_EXTRA_JAVA_MODULES androidcamera)
   ENDIF()

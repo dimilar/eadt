@@ -69,6 +69,7 @@
            (device (android-get-current-device))
            (cmake-command (concat
                            " -DDEVICE=" device
+                           " -DANDROID_API_LEVEL=" android-target
                            " -DARM_TARGET=\"" (car android-armeabi) "\""
                             " -DCMAKE_TOOLCHAIN_FILE="android-cmake-toolchain-file
                             " " (expand-file-name ".." build-dir)))

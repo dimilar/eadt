@@ -494,7 +494,7 @@ Usually, it is also necessary to modify the corresponding proerties of all open 
       (put (intern project-root android-project-prop-obarray) sym value))))
 
 
-(defvar android-target "android-8")
+(defvar android-target "android-10")
 (make-variable-buffer-local 'android-target)
 
 
